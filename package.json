@@ -1,0 +1,86 @@
+{
+  "name": "iot-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mit-app-inventor/blockly-block-lexical-variables": "^3.0.1",
+    "@mui/icons-material": "^5.14.5",
+    "@mui/material": "^5.14.5",
+    "@mui/utils": "^5.14.5",
+    "@wokwi/elements": "^1.5.1",
+    "assert": "^2.1.0",
+    "axios": "^1.7.9",
+    "blockly": "^9.3.3",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
+    "child_process": "^1.0.2",
+    "cors": "^2.8.5",
+    "cra-template": "1.2.0",
+    "crypto-browserify": "^3.12.1",
+    "express": "^4.21.2",
+    "framer-motion": "^12.0.6",
+    "fs": "^0.0.1-security",
+    "http": "^0.0.1-security",
+    "https": "^1.0.0",
+    "https-browserify": "^1.0.0",
+    "net": "^1.0.2",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
+    "perf_hooks": "^0.0.1",
+    "proceds-blockly": "^1.1.2",
+    "process": "^0.11.10",
+    "react": "^19.0.0",
+    "react-blockly": "^9.0.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
+    "react-dom": "^19.0.0",
+    "react-draggable": "^4.4.6",
+    "react-is": "^19.0.0",
+    "react-scripts": "5.0.1",
+    "socket.io-client": "^4.8.1",
+    "stream-http": "^3.2.0",
+    "tls": "^0.0.1",
+    "url": "^0.11.4",
+    "util": "^0.12.5",
+    "web-vitals": "^4.2.4",
+    "ws": "^8.18.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "babel-loader": "^10.0.0",
+    "html-webpack-plugin": "^5.6.3",
+    "webpack": "^5.98.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-dev-server": "^5.2.1"
+  }
+}
