@@ -855,25 +855,42 @@ const IoTSimulator = () => {
       return "// Start of program\n";
     };
 
-    componentsList.forEach((comp) => {
-      Blockly.Blocks[comp.type] = {
-        init: function () {
-          this.appendDummyInput().appendField(comp.name);
-          this.setPreviousStatement(true, null);
-          this.setNextStatement(true, null);
-          this.setColour(180);
-        },
-      };
-      javascriptGenerator[comp.type] = function () {
-        const pin = comp.defaultPin;
-        let device = pinDeviceMap[normalizePin(pin)]?.device || comp.type.toUpperCase();
-        // Explicitly map 'sensor' type to 'ULTRASONIC_SENSOR'
-        if (comp.type === "sensor") {
-          device = "ULTRASONIC_SENSOR";
-        }
-        return `activate${device}("${pin}");\n`;
-      };
-    });
+  let generatedOutput = ""; // Variable to store all generated outputs
+
+componentsList.forEach((comp) => {
+  Blockly.Blocks[comp.type] = {
+    init: function () {
+      this.appendDummyInput().appendField(comp.name);
+      this.setPreviousStatement(true, null);
+      this.setNextStatement(true, null);
+      this.setColour(180);
+    },
+  };
+
+  javascriptGenerator[comp.type] = function () {
+    const pin = comp.defaultPin;
+    let device = pinDeviceMap[normalizePin(pin)]?.device || comp.type.toUpperCase();
+
+    // Explicitly map 'sensor' type to 'ULTRASONIC_SENSOR'
+    if (comp.type === "sensor") {
+      device = "ULTRASONIC_SENSOR";
+    }
+
+    const code = `activate${device}("${pin}");\n`;
+
+    // Append to generated output
+    generatedOutput += code;
+
+    return code;
+  };
+});
+
+// Function to trigger the alert and log the output
+const showGeneratedOutput = () => {
+  window.alert(generatedOutput);
+  setOutputLog((prev) => [...prev, `Alert: ${generatedOutput}`]);
+};
+
     Blockly.Blocks["sevensegment_display"] = {
       init: function () {
         this.appendValueInput("NUMBER")
