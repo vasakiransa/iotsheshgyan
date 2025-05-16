@@ -590,14 +590,15 @@ const IoTSimulator = () => {
     window.measureDistanceWrapper();
     checkConnection();
   };
- const measureDistance = (components, setOutputLog) => {
+const measureDistance = (components, setOutputLog) => {
   const sensor = components.find((comp) => comp.type === "sensor");
   const object = components.find((comp) => comp.type === "object");
 
   if (sensor && object) {
-    // Check if object is directly on top of the sensor
+    // Allow approximate alignment using tolerance
+    const xTolerance = 5; // pixels
     const isObjectOnTop =
-      object.x === sensor.x && object.y < sensor.y;
+      Math.abs(object.x - sensor.x) <= xTolerance && object.y < sensor.y;
 
     if (isObjectOnTop) {
       const distance = Math.sqrt(
@@ -623,6 +624,7 @@ const IoTSimulator = () => {
     ]);
   }
 };
+
 
   
 
