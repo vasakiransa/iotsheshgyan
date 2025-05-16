@@ -188,6 +188,7 @@ const IoTSimulator = () => {
       console.log("New components state:", newComponents);
       return newComponents;
     });
+    
   };
 
   const findComponentByBridgePin = (bridgePin, componentType) => {
@@ -589,13 +590,20 @@ const IoTSimulator = () => {
     window.measureDistanceWrapper();
     checkConnection();
   };
-  const measureDistance = (components, setOutputLog) => {
-    const sensor = components.find((comp) => comp.type === "sensor");
-    const object = components.find((comp) => comp.type === "object");
-    if (sensor && object) {
+ const measureDistance = (components, setOutputLog) => {
+  const sensor = components.find((comp) => comp.type === "sensor");
+  const object = components.find((comp) => comp.type === "object");
+
+  if (sensor && object) {
+    // Check if object is directly on top of the sensor
+    const isObjectOnTop =
+      object.x === sensor.x && object.y < sensor.y;
+
+    if (isObjectOnTop) {
       const distance = Math.sqrt(
         Math.pow(sensor.x - object.x, 2) + Math.pow(sensor.y - object.y, 2)
       ).toFixed(2);
+
       setOutputLog((prev) => [
         ...prev,
         `Ultrasonic Sensor detected: Distance to Object is ${distance} pixels`,
@@ -603,12 +611,19 @@ const IoTSimulator = () => {
     } else {
       setOutputLog((prev) => [
         ...prev,
-        `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
-          !object ? "Object missing" : ""
-        }`,
+        `Object not on top of the sensor`,
       ]);
     }
-  };
+  } else {
+    setOutputLog((prev) => [
+      ...prev,
+      `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
+        !object ? "Object missing" : ""
+      }`,
+    ]);
+  }
+};
+
   
 
 
