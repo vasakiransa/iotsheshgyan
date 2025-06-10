@@ -188,7 +188,6 @@ const IoTSimulator = () => {
       console.log("New components state:", newComponents);
       return newComponents;
     });
-    
   };
 
   const findComponentByBridgePin = (bridgePin, componentType) => {
@@ -590,21 +589,13 @@ const IoTSimulator = () => {
     window.measureDistanceWrapper();
     checkConnection();
   };
-const measureDistance = (components, setOutputLog) => {
-  const sensor = components.find((comp) => comp.type === "sensor");
-  const object = components.find((comp) => comp.type === "object");
-
-  if (sensor && object) {
-    // Allow approximate alignment using tolerance
-    const xTolerance = 5; // pixels
-    const isObjectOnTop =
-      Math.abs(object.x - sensor.x) <= xTolerance && object.y < sensor.y;
-
-    if (isObjectOnTop) {
+  const measureDistance = (components, setOutputLog) => {
+    const sensor = components.find((comp) => comp.type === "sensor");
+    const object = components.find((comp) => comp.type === "object");
+    if (sensor && object) {
       const distance = Math.sqrt(
         Math.pow(sensor.x - object.x, 2) + Math.pow(sensor.y - object.y, 2)
       ).toFixed(2);
-
       setOutputLog((prev) => [
         ...prev,
         `Ultrasonic Sensor detected: Distance to Object is ${distance} pixels`,
@@ -612,20 +603,12 @@ const measureDistance = (components, setOutputLog) => {
     } else {
       setOutputLog((prev) => [
         ...prev,
-        `Object not on top of the sensor`,
+        `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
+          !object ? "Object missing" : ""
+        }`,
       ]);
     }
-  } else {
-    setOutputLog((prev) => [
-      ...prev,
-      `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
-        !object ? "Object missing" : ""
-      }`,
-    ]);
-  }
-};
-
-
+  };
   
 
 
@@ -857,42 +840,25 @@ const measureDistance = (components, setOutputLog) => {
       return "// Start of program\n";
     };
 
-  let generatedOutput = ""; // Variable to store all generated outputs
-
-componentsList.forEach((comp) => {
-  Blockly.Blocks[comp.type] = {
-    init: function () {
-      this.appendDummyInput().appendField(comp.name);
-      this.setPreviousStatement(true, null);
-      this.setNextStatement(true, null);
-      this.setColour(180);
-    },
-  };
-
-  javascriptGenerator[comp.type] = function () {
-    const pin = comp.defaultPin;
-    let device = pinDeviceMap[normalizePin(pin)]?.device || comp.type.toUpperCase();
-
-    // Explicitly map 'sensor' type to 'ULTRASONIC_SENSOR'
-    if (comp.type === "sensor") {
-      device = "ULTRASONIC_SENSOR";
-    }
-
-    const code = `activate${device}("${pin}");\n`;
-
-    // Append to generated output
-    generatedOutput += code;
-
-    return code;
-  };
-});
-
-// Function to trigger the alert and log the output
-const showGeneratedOutput = () => {
-  window.alert(generatedOutput);
-  setOutputLog((prev) => [...prev, `Alert: ${generatedOutput}`]);
-};
-
+    componentsList.forEach((comp) => {
+      Blockly.Blocks[comp.type] = {
+        init: function () {
+          this.appendDummyInput().appendField(comp.name);
+          this.setPreviousStatement(true, null);
+          this.setNextStatement(true, null);
+          this.setColour(180);
+        },
+      };
+      javascriptGenerator[comp.type] = function () {
+        const pin = comp.defaultPin;
+        let device = pinDeviceMap[normalizePin(pin)]?.device || comp.type.toUpperCase();
+        // Explicitly map 'sensor' type to 'ULTRASONIC_SENSOR'
+        if (comp.type === "sensor") {
+          device = "ULTRASONIC_SENSOR";
+        }
+        return `activate${device}("${pin}");\n`;
+      };
+    });
     Blockly.Blocks["sevensegment_display"] = {
       init: function () {
         this.appendValueInput("NUMBER")
