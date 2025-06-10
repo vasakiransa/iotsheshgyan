@@ -589,26 +589,43 @@ const IoTSimulator = () => {
     window.measureDistanceWrapper();
     checkConnection();
   };
-  const measureDistance = (components, setOutputLog) => {
-    const sensor = components.find((comp) => comp.type === "sensor");
-    const object = components.find((comp) => comp.type === "object");
-    if (sensor && object) {
-      const distance = Math.sqrt(
-        Math.pow(sensor.x - object.x, 2) + Math.pow(sensor.y - object.y, 2)
-      ).toFixed(2);
+ const measureDistance = (components, setOutputLog) => {
+  const sensor = components.find((comp) => comp.type === "sensor");
+  const object = components.find((comp) => comp.type === "object");
+
+  if (sensor && object) {
+    const pixelDistance = Math.sqrt(
+      Math.pow(sensor.x - object.x, 2) + Math.pow(sensor.y - object.y, 2)
+    );
+
+    const mmDistance = (pixelDistance * 25.4 / 96).toFixed(2);
+
+    const xDifference = Math.abs(sensor.x - object.x);
+    const tolerancePx = 20;
+    const toleranceMm = (tolerancePx * 25.4 / 96).toFixed(2);
+
+    if (xDifference > tolerancePx) {
+      const xDiffMm = (xDifference * 25.4 / 96).toFixed(2);
       setOutputLog((prev) => [
         ...prev,
-        `Ultrasonic Sensor detected: Distance to Object is ${distance} pixels`,
-      ]);
-    } else {
-      setOutputLog((prev) => [
-        ...prev,
-        `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
-          !object ? "Object missing" : ""
-        }`,
+        `Object is not in correct position: it should be above the sensor (x-axis misalignment of ${xDiffMm} mm).`,
       ]);
     }
-  };
+
+    setOutputLog((prev) => [
+      ...prev,
+      `Ultrasonic Sensor detected: Distance to Object is ${mmDistance} mm`,
+    ]);
+  } else {
+    setOutputLog((prev) => [
+      ...prev,
+      `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
+        !object ? "Object missing" : ""
+      }`,
+    ]);
+  }
+};
+
   
 
 
