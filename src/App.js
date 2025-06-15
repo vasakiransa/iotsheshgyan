@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from "react";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
@@ -35,20 +34,34 @@ import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import DraggableComponent from "./components/DraggableComponent";
 import Workspace from "./components/Workspace";
 import bridgeImage from "./assets/bridge.svg";
-import ldrImage from "./assets/ldr.svg";
 import objectImage from "./assets/object.svg";
-import audioplayerImage from "./assets/audioplayer.svg";
 import oledImage from "./assets/oled.svg";
 import sensorImage from "./assets/sensor.png";
 import ledImage from "./assets/led.png";
 import motorImage from "./assets/motor.png";
 import buzzerImage from "./assets/buzzer.png";
 import joystickImage from "./assets/joystick.png";
-import smartLightImage from "./assets/smartlightled.png";
 import sevenSegmentImage from "./assets/sevensegmentdisplay.png";
 import panTiltImage from "./assets/panandtilt.png";
-import "./App.css";
+import smartLightComponentImage from "./assets/smartlight.jpeg"; // New image for SmartLightComponent
+import smartLightLedImage from "./assets/smart.png";
 
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import "./App.css";
+class ErrorBoundary extends React.Component {
+  state = { error: null };
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      console.error('ErrorBoundary caught:', this.state.error);
+      return <div>Error: {this.state.error.message}</div>;
+    }
+    return this.props.children;
+  }
+}
 const theme = createTheme({
   palette: {
     mode: "light",
@@ -122,6 +135,12 @@ const IoTSimulator = () => {
   const blocklyDiv = useRef(null);
   const workspaceRef = useRef(null);
   const audioContextRef = useRef(null);
+  const [isStoreMinimized, setIsStoreMinimized] = useState(true); // Start minimized
+  const [previousTabValue, setPreviousTabValue] = useState(null); // Store previous tab
+  
+  const [isMinimizedStore, setIsMinimizedStore] = useState(true);
+  const [isMinimizedBlockly, setIsMinimizedBlockly] = useState(false);
+  const [isMinimizedWorkspace, setIsMinimizedWorkspace] = useState(false);
 
   const esp32Pins = [
     "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12"
@@ -129,20 +148,20 @@ const IoTSimulator = () => {
   const rgbLedPins = ["C011", "C012", "C013"];
   const sensorPins = ["C08", "VCC", "GND"];
   const joystickPins = ["VRX", "VRY", "SW"];
+  const smartLightPins = ["C01"];
 
   const pinDeviceMap = {
     "C01": { device: "BUZZER", description: "The buzzer will turn on with sound." },
-    "C03": { device: "SEVENSEGMENT", description: "It is showing the number." },
+    "C01": { device: "SMARTLIGHT", description: "The buzzer will turn on with sound." },
+    "C03": { device: "SEVENSEGMENT", description: "It is showing the number or letter." },
     "C02": { device: "SOIL_SENSOR", description: "It is reading soil data." },
     "C04": { device: "DIP_SWITCH", description: "It is toggled." },
     "C09": { device: "PAN_AND_TILT", description: "The servo will rotate." },
-    "C06": { device: "WEATHER_MONITORING", description: "It senses temperature and humidity." },
     "C06": { device: "DC_MOTOR", description: "The motor will spin." },
     "C12": { device: "ULTRASONIC_SENSOR", description: "It senses the obstacle." },
-    "C01": { device: "OLED", description: "It is showing the picture and number." },
+    "C01": { device: "OLED", description: "It is showing graphics or text." },
     "C10": { device: "JOYSTICK", description: "It is showing the X-axis and Y-axis values." },
     "C011": { device: "TRI_COLOUR_LED", description: "The LED will glow." },
-    
     "C12": { device: "OBJECT", description: "The object is detected." },
   };
 
@@ -156,18 +175,20 @@ const IoTSimulator = () => {
     { id: 8, name: "7-Segment", type: "sevensegment", image: sevenSegmentImage, category: "Display", defaultPin: "C03" },
     { id: 9, name: "Pan & Tilt", type: "pantilt", image: panTiltImage, category: "Motor", defaultPin: "C09" },
     { id: 11, name: "OLED", type: "oled", image: oledImage, category: "Display", defaultPin: "C01" },
-    { id: 13, name: "Object", type: "object", image: objectImage, category: "Other", defaultPin: "C06" },
+    { id: 13, name: "Object", type: "object", image: objectImage, category: "Other", defaultPin: "C12" },
+    { id: 14, name: "SmartLightComponent", type: "smartlightcomponent", image: smartLightComponentImage, category: "LED", defaultPin: "C001" },
+    { id: 15, name: "SmartLightLED", type: "smartlightled", image: smartLightLedImage, category: "LED", defaultPin: "C001" },
   ];
-
+  
   const categories = {
     Bridge: ["bridge"],
-    LED: ["led"],
+    LED: ["led", "smartlightcomponent","smartlightled"],
     Display: ["sevensegment", "oled"],
     Sensor: ["sensor"],
     Sound: ["buzzer"],
     Motor: ["motor", "pantilt"],
     Joystick: ["joystick"],
-    Other: [ "object"],
+    Other: ["object"],
   };
 
   const handleTabChange = (event, newValue) => {
@@ -209,7 +230,6 @@ const IoTSimulator = () => {
       return null;
     }
 
-    // Check for wire connecting bridge to component
     const wire = wires.find((w) => {
       const sourcePin = normalizePin(w.sourcePin);
       const targetPin = normalizePin(w.targetPin);
@@ -231,11 +251,8 @@ const IoTSimulator = () => {
       } else {
         console.warn(`No ${componentType} found for component ID ${componentId}`);
       }
-    } else {
-      console.warn(`No wire found for pin ${normalizedBridgePin}`);
     }
 
-    // Check connectedPins
     const componentByConnectedPins = components.find(
       (comp) =>
         comp.type === componentType &&
@@ -246,19 +263,208 @@ const IoTSimulator = () => {
       return componentByConnectedPins;
     }
 
-    // Fallback to comp.pin
-    const componentByPin = components.find(
-      (comp) => comp.type === componentType && normalizePin(comp.pin) === normalizedBridgePin
-    );
-    if (componentByPin) {
-      console.log(`Found ${componentType} (ID: ${componentByPin.id}) via comp.pin for pin ${bridgePin}`);
-      return componentByPin;
-    }
-
     console.warn(`No ${componentType} found for pin ${bridgePin}`);
     return null;
   };
+  const activateSMARTLIGHT = (pin) => {
+    console.log(`Activating SMARTLIGHT on pin ${pin}`);
+    setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Activated`]);
+    const component = findComponentByBridgePin(pin, "smartlight");
+    if (component) {
+      updateComponentState(component.id, { state: "on", pin });
+    }
+    checkConnection();
+  };
 
+  const setSmartLightColor = async (color, seconds, power, pin) => {
+    console.log(`Setting Smart Light color to ${color} for ${seconds}s with power ${power} on pin ${pin}`);
+    const colorMap = {
+      red: { r: 255, g: 0, b: 0 },
+      green: { r: 0, g: 255, b: 0 },
+      blue: { r: 0, g: 0, b: 255 },
+      yellow: { r: 255, g: 255, b: 0 },
+      cyan: { r: 0, g: 255, b: 255 },
+      magenta: { r: 255, g: 0, b: 255 },
+      white: { r: 255, g: 255, b: 255 },
+    };
+    const rgb = colorMap[color.toLowerCase()] || { r: 255, g: 255, b: 255 };
+    const duration = parseFloat(seconds) * 1000;
+    const powerState = power.toLowerCase() === "on" ? 1 : 0;
+
+    setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Set to ${color} for ${seconds}s, Power: ${power}`]);
+    const component = findComponentByBridgePin(pin, "smartlight");
+    if (component) {
+      updateComponentState(component.id, {
+        state: powerState ? "glowing" : "off",
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+        duration: seconds,
+        power: powerState,
+        pin,
+      });
+
+      if (powerState && duration > 0) {
+        await new Promise((resolve) => setTimeout(resolve, duration));
+        updateComponentState(component.id, {
+          state: "off",
+          r: 0,
+          g: 0,
+          b: 0,
+          pin,
+        });
+        setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Turned off after ${seconds}s`]);
+      }
+    } else {
+      setOutputLog((prev) => [...prev, `Error: No Smart Light found for pin ${pin}`]);
+    }
+    checkConnection();
+  };
+
+     // Smart Light VIBGYOR Block
+Blockly.Blocks["smartlight_vibgyor"] = {
+  init: function () {
+    this.appendDummyInput().appendField("Smart Light VIBGYOR");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(180);
+    this.setTooltip("Displays VIBGYOR colors on Smart Light");
+  },
+};
+javascriptGenerator["smartlight_vibgyor"] = function (block) {
+  return `smartLightVibgyor("c001");\n`;
+};
+
+// SmartLightLED Colour Seconds Block
+Blockly.Blocks["smartlightled_colour_seconds"] = {
+  init: function () {
+    this.appendDummyInput()
+      .appendField("SmartLightLED")
+      .appendField(new Blockly.FieldDropdown([
+        ["LED1", "LED1"], ["LED2", "LED2"]
+      ]), "LED");
+    this.appendDummyInput()
+      .appendField("Colour")
+      .appendField(new Blockly.FieldDropdown([
+        ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"]
+      ]), "COLOUR");
+    this.appendValueInput("SECONDS").setCheck("Number").appendField("for");
+    this.appendDummyInput().appendField("seconds");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(180);
+    this.setTooltip("Set SmartLightLED to a colour for a specified duration");
+  },
+};
+javascriptGenerator["smartlightled_colour_seconds"] = function (block) {
+  const led = block.getFieldValue("LED");
+  const colour = block.getFieldValue("COLOUR");
+  const seconds = javascriptGenerator.valueToCode(block, "SECONDS", javascriptGenerator.ORDER_ATOMIC) || "0";
+  return `setSmartLightLedColourSeconds("${led}", "${colour}", ${seconds}, "c001");\n`;
+};
+
+// SmartLightLED Colour Power Dropdown Block
+Blockly.Blocks["smartlightled_colour_power"] = {
+  init: function () {
+    this.appendDummyInput()
+      .appendField("SmartLightLED")
+      .appendField(new Blockly.FieldDropdown([
+        ["LED1", "LED1"], ["LED2", "LED2"], ["LED3", "LED3"],
+        ["LED4", "LED4"], ["LED5", "LED5"], ["LED6", "LED6"], ["LED7", "LED7"]
+      ]), "LEDLEVEL");
+    this.appendDummyInput()
+      .appendField("Colour")
+      .appendField(new Blockly.FieldDropdown([
+        ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"]
+      ]), "COLOUR");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(180);
+    this.setTooltip("Set SmartLightLED colour and brightness based on LED level (1-7)");
+  },
+};
+javascriptGenerator["smartlightled_colour_power"] = function (block) {
+  const ledLevel = block.getFieldValue("LEDLEVEL");
+  const colour = block.getFieldValue("COLOUR");
+
+  // Map LED level to brightness percentage
+  const brightnessMap = {
+    LED1: 20,
+    LED2: 35,
+    LED3: 50,
+    LED4: 65,
+    LED5: 80,
+    LED6: 90,
+    LED7: 100
+  };
+  const power = brightnessMap[ledLevel];
+
+  return `setSmartLightLedColourPower("${ledLevel}", "${colour}", ${power}, "c001");\n`;
+};
+
+
+// SmartLightLED Dropdown Colour Dropdown Power Dropdown Block
+Blockly.Blocks["smartlightled_dropdown_colour_power"] = {
+  init: function () {
+    this.appendDummyInput()
+      .appendField("SmartLightLED")
+      .appendField(new Blockly.FieldDropdown([
+        ["LED1", "LED1"], ["LED2", "LED2"]
+      ]), "LED");
+    this.appendDummyInput()
+      .appendField("Colour")
+      .appendField(new Blockly.FieldDropdown([
+        ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"]
+      ]), "COLOUR");
+    this.appendDummyInput()
+      .appendField("Power")
+      .appendField(new Blockly.FieldDropdown([
+        ["ON", "100"], ["OFF", "0"]
+      ]), "POWER");
+    this.setPreviousStatement(true);
+    this.setNextStatement(true);
+    this.setColour(180);
+    this.setTooltip("Set SmartLightLED with dropdown for colour and power");
+  },
+};
+javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
+  const led = block.getFieldValue("LED");
+  const colour = block.getFieldValue("COLOUR");
+  const power = block.getFieldValue("POWER");
+  return `setSmartLightLedDropdownColourPower("${led}", "${colour}", ${power}, "c001");\n`;
+};
+
+  const setSmartLightLed = (led, color, power, pin) => {
+    console.log(`Setting Smart Light LED ${led} to color ${color} with power ${power} on pin ${pin}`);
+    const colorMap = {
+      red: { r: 255, g: 0, b: 0 },
+      green: { r: 0, g: 255, b: 0 },
+      blue: { r: 0, g: 0, b: 255 },
+      yellow: { r: 255, g: 255, b: 0 },
+      cyan: { r: 0, g: 255, b: 255 },
+      magenta: { r: 255, g: 0, b: 255 },
+      white: { r: 255, g: 255, b: 255 },
+    };
+    const rgb = colorMap[color.toLowerCase()] || { r: 255, g: 255, b: 255 };
+    const powerState = power.toLowerCase() === "on" ? 1 : 0;
+
+    setOutputLog((prev) => [...prev, `Smart Light LED ${led} on pin ${pin}: Set to ${color}, Power: ${power}`]);
+    const component = findComponentByBridgePin(pin, "smartlight");
+    if (component) {
+      updateComponentState(component.id, {
+        state: powerState ? "glowing" : "off",
+        led: led,
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+        power: powerState,
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [...prev, `Error: No Smart Light found for pin ${pin}`]);
+    }
+    checkConnection();
+  };
   const activateBUZZER = (pin) => {
     console.log(`Activating BUZZER on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Buzzer on pin ${pin}: Activated`]);
@@ -319,6 +525,110 @@ const IoTSimulator = () => {
     }
     checkConnection();
   };
+   window.playBuzzerSareGamaPa = async (pin) => {
+    console.log(`Playing Sare Gama Pa on BUZZER on pin ${pin}`);
+    setOutputLog((prev) => [...prev, `Buzzer on pin ${pin}: Playing Sare Gama Pa`]);
+  
+    const notes = [
+      { freq: 261.63, duration: 0.3 }, // C4
+      { freq: 293.66, duration: 0.3 }, // D4
+      { freq: 329.63, duration: 0.3 }, // E4
+      { freq: 349.23, duration: 0.3 }, // F4
+      { freq: 392.00, duration: 0.3 }, // G4
+      { freq: 440.00, duration: 0.3 }, // A4
+      { freq: 493.88, duration: 0.3 }, // B4
+      { freq: 523.25, duration: 0.3 }, // C5
+    ];
+  
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        setOutputLog((prev) => [...prev, "AudioContext initialized"]);
+      }
+  
+      const audioCtx = audioContextRef.current;
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+        setOutputLog((prev) => [...prev, "AudioContext resumed"]);
+      }
+  
+      for (const note of notes) {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+  
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+  
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(note.freq, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+  
+        oscillator.start();
+        await new Promise((resolve) => setTimeout(resolve, note.duration * 1000));
+        oscillator.stop();
+      }
+  
+      const component = findComponentByBridgePin(pin, "buzzer");
+      if (component) {
+        updateComponentState(component.id, { state: "played_music", song: "Sare Gama Pa", pin });
+      }
+    } catch (error) {
+      setOutputLog((prev) => [...prev, `Audio Error: ${error.message}`]);
+    }
+    checkConnection();
+  };
+  
+
+  const playBuzzerHappyBirthday = async (pin) => {
+    console.log(`Playing Happy Birthday on BUZZER on pin ${pin}`);
+    setOutputLog((prev) => [...prev, `Buzzer on pin ${pin}: Playing Happy Birthday`]);
+
+    const notes = [
+      { freq: 261.63, duration: 0.3 }, // C4
+      { freq: 261.63, duration: 0.15 }, // C4
+      { freq: 293.66, duration: 0.45 }, // D4
+      { freq: 261.63, duration: 0.45 }, // C4
+      { freq: 349.23, duration: 0.45 }, // F4
+      { freq: 329.63, duration: 0.6 }, // E4
+    ];
+
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        setOutputLog((prev) => [...prev, "AudioContext initialized"]);
+      }
+
+      const audioCtx = audioContextRef.current;
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+        setOutputLog((prev) => [...prev, "AudioContext resumed"]);
+      }
+
+      for (const note of notes) {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = "square";
+        oscillator.frequency.setValueAtTime(note.freq, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+
+        oscillator.start();
+        await new Promise((resolve) => setTimeout(resolve, note.duration * 1000));
+        oscillator.stop();
+      }
+
+      const component = findComponentByBridgePin(pin, "buzzer");
+      if (component) {
+        updateComponentState(component.id, { state: "played_music", song: "Happy Birthday", pin });
+      }
+    } catch (error) {
+      setOutputLog((prev) => [...prev, `Audio Error: ${error.message}`]);
+    }
+    checkConnection();
+  };
 
   const activateSEVENSEGMENT = (pin) => {
     console.log(`Activating SEVENSEGMENT on pin ${pin}`);
@@ -350,6 +660,33 @@ const IoTSimulator = () => {
     checkConnection();
   };
 
+  const displaySevenSegmentLetter = (letter, pin) => {
+    console.log(`Calling displaySevenSegmentLetter(${letter}, "${pin}")`);
+    const validLetter = String(letter).toUpperCase().replace(/^"|"$/g, "");
+    if (/^[A-FHJKLNPRU]$/.test(validLetter)) {
+      setOutputLog((prev) => [...prev, `7-Segment on pin ${pin}: Displaying letter ${validLetter}`]);
+      const component = findComponentByBridgePin(pin, "sevensegment");
+      if (component) {
+        updateComponentState(component.id, {
+          state: "displaying_letter",
+          value: validLetter,
+          pin,
+        });
+      } else {
+        setOutputLog((prev) => [
+          ...prev,
+          `Error: No 7-Segment display found for pin ${pin}`,
+        ]);
+      }
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: Invalid letter for 7-Segment display on pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
   const activateSOIL_SENSOR = (pin) => {
     console.log(`Activating SOIL_SENSOR on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Soil Sensor on pin ${pin}: Activated`]);
@@ -358,6 +695,28 @@ const IoTSimulator = () => {
       updateComponentState(component.id, { state: "on", pin });
     }
     checkConnection();
+  };
+
+  window.controlSevenSegment = (segments, pin) => {
+    console.log(`Calling controlSevenSegment(${JSON.stringify(segments)}, "${pin}")`);
+    const component = findComponentByBridgePin(pin, "sevensegment");
+    if (component) {
+      setOutputLog((prev) => [
+        ...prev,
+        `7-Segment on pin ${pin}: Segments - a:${segments.a}, b:${segments.b}, c:${segments.c}, d:${segments.d}, e:${segments.e}, f:${segments.f}, g:${segments.g}`,
+      ]);
+      updateComponentState(component.id, {
+        state: "displaying_pattern",
+        value: segments,
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No 7-Segment display found for pin ${pin}`,
+      ]);
+    }
+    // checkConnection(); // Temporarily disabled
   };
 
   const activateDIP_SWITCH = (pin) => {
@@ -404,6 +763,85 @@ const IoTSimulator = () => {
     checkConnection();
   };
 
+  const controlServoPan = (degrees, pin) => {
+    console.log(`Calling controlServoPan(${degrees}, "${pin}")`);
+    const angle = Math.max(0, Math.min(180, Number(degrees)));
+    setOutputLog((prev) => [...prev, `Servo Pan on pin ${pin}: Set to ${angle}°`]);
+    const component = findComponentByBridgePin(pin, "pantilt");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "moving",
+        angle: { ...component.angle, pan: angle },
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No Pan & Tilt found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const controlServoTilt = (degrees, pin) => {
+    console.log(`Calling controlServoTilt(${degrees}, "${pin}")`);
+    const angle = Math.max(0, Math.min(180, Number(degrees)));
+    setOutputLog((prev) => [...prev, `Servo Tilt on pin ${pin}: Set to ${angle}°`]);
+    const component = findComponentByBridgePin(pin, "pantilt");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "moving",
+        angle: { ...component.angle, tilt: angle },
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No Pan & Tilt found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const controlServoMode = (degrees, pin) => {
+    console.log(`Calling controlServoMode(${degrees}, "${pin}")`);
+    const angle = Math.max(0, Math.min(180, Number(degrees)));
+    setOutputLog((prev) => [...prev, `Servo Mode on pin ${pin}: Set to ${angle}°`]);
+    const component = findComponentByBridgePin(pin, "pantilt");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "mode_set",
+        angle: { pan: angle, tilt: angle },
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No Pan & Tilt found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const servoLookUp = (pin) => {
+    console.log(`Calling servoLookUp("${pin}")`);
+    setOutputLog((prev) => [...prev, `Servo on pin ${pin}: Looking up`]);
+    const component = findComponentByBridgePin(pin, "pantilt");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "looking_up",
+        angle: { pan: 90, tilt: 0 },
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No Pan & Tilt found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
   const activateDC_MOTOR = (pin) => {
     console.log(`Activating DC_MOTOR on pin ${pin}`);
     setOutputLog((prev) => [...prev, `DC Motor on pin ${pin}: Activated`]);
@@ -417,17 +855,18 @@ const IoTSimulator = () => {
   const controlMotor = (speed, direction, pin) => {
     console.log(`Calling controlMotor(${speed}, "${direction}", "${pin}")`);
     const motorSpeed = Math.max(0, Math.min(255, Number(speed)));
-    const validDirection = direction.toUpperCase() === "BACKWARD" ? "backward" : "forward";
+    // Map Blockly directions to controlMotor directions
+    const mappedDirection = direction.toUpperCase() === "ANTICLOCKWISE" ? "backward" : "forward";
     setOutputLog((prev) => [
       ...prev,
-      `DC Motor on pin ${pin}: Speed=${motorSpeed}, Direction=${validDirection}`,
+      `DC Motor on pin ${pin}: Speed=${motorSpeed}, Direction=${mappedDirection}`,
     ]);
     const component = findComponentByBridgePin(pin, "motor");
     if (component) {
       updateComponentState(component.id, {
         state: motorSpeed > 0 ? "spinning" : "stopped",
         speed: motorSpeed,
-        direction: validDirection,
+        direction: mappedDirection,
         pin,
       });
     } else {
@@ -438,13 +877,31 @@ const IoTSimulator = () => {
     }
     checkConnection();
   };
+ 
 
-  const activateWEATHER_MONITORING = (pin) => {
-    console.log(`Activating WEATHER_MONITORING on pin ${pin}`);
-    setOutputLog((prev) => [...prev, `Weather Monitoring on pin ${pin}: Activated`]);
-    const component = findComponentByBridgePin(pin, "sensor");
+  const controlMotorDriver = (dir1, dir2, speed1, speed2, pin) => {
+    console.log(`Calling controlMotorDriver("${dir1}", "${dir2}", ${speed1}, ${speed2}, "${pin}")`);
+    const direction1 = dir1.toUpperCase() === "ANTICLOCKWISE" ? "anticlockwise" : "clockwise";
+    const direction2 = dir2.toUpperCase() === "ANTICLOCKWISE" ? "anticlockwise" : "clockwise";
+    const speed1Val = Math.max(0, Math.min(255, Number(speed1)));
+    const speed2Val = Math.max(0, Math.min(255, Number(speed2)));
+    setOutputLog((prev) => [
+      ...prev,
+      `Motor Driver on pin ${pin}: Dir1=${direction1}, Speed1=${speed1Val}, Dir2=${direction2}, Speed2=${speed2Val}`,
+    ]);
+    const component = findComponentByBridgePin(pin, "motor");
     if (component) {
-      updateComponentState(component.id, { state: "on", pin });
+      updateComponentState(component.id, {
+        state: "running",
+        speed: { motor1: speed1Val, motor2: speed2Val },
+        direction: { motor1: direction1, motor2: direction2 },
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No DC Motor found for pin ${pin}`,
+      ]);
     }
     checkConnection();
   };
@@ -459,6 +916,156 @@ const IoTSimulator = () => {
     checkConnection();
   };
 
+  const setLedColor = (color, pin) => {
+    console.log(`Calling setLedColor("${color}", "${pin}")`);
+  
+    const colorMap = {
+      red: { r: 255, g: 0, b: 0 },
+      green: { r: 0, g: 255, b: 0 },
+      blue: { r: 0, g: 0, b: 255 },
+      yellow: { r: 255, g: 255, b: 0 },
+      cyan: { r: 0, g: 255, b: 255 },
+      magenta: { r: 255, g: 0, b: 255 },
+      orange: { r: 255, g: 165, b: 0 },
+      purple: { r: 128, g: 0, b: 128 },
+      pink: { r: 255, g: 192, b: 203 },
+      brown: { r: 165, g: 42, b: 42 },
+      black: { r: 0, g: 0, b: 0 },
+      white: { r: 255, g: 255, b: 255 },
+      grey: { r: 128, g: 128, b: 128 },
+      lime: { r: 0, g: 255, b: 0 },
+      navy: { r: 0, g: 0, b: 128 },
+      teal: { r: 0, g: 128, b: 128 },
+      maroon: { r: 128, g: 0, b: 0 },
+      olive: { r: 128, g: 128, b: 0 },
+      skyblue: { r: 135, g: 206, b: 235 },
+      aliceblue: { r: 240, g: 248, b: 255 },
+      gold: { r: 255, g: 215, b: 0 },
+      indigo: { r: 75, g: 0, b: 130 }
+    };
+  
+    const rgb = colorMap[color.toLowerCase()] || { r: 255, g: 255, b: 255 };
+  
+    setOutputLog((prev) => [...prev, `Tri-Color LED on pin ${pin}: Set to ${color}`]);
+    const component = findComponentByBridgePin(pin, "led");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "glowing",
+        r: rgb.r,
+        g: rgb.g,
+        b: rgb.b,
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No RGB LED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+  const setLedColorByRGB = (r, g, b, pin) => {
+    console.log(`Setting RGB color to R:${r}, G:${g}, B:${b} on pin ${pin}`);
+    const component = findComponentByBridgePin(pin, "led");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "glowing",
+        r,
+        g,
+        b,
+        pin,
+      });
+      setOutputLog((prev) => [
+        ...prev,
+        `Tri-Color LED on pin ${pin}: Set manually to RGB(${r}, ${g}, ${b})`,
+      ]);
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No RGB LED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  window.activateSMARTLIGHT = (pin) => {
+    setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: It displays VIBGYOR colors.`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlight" && (!comp.pin || comp.pin === pin) ? { ...comp, state: "vibgyor", pin } : comp
+      )
+    );
+  };
+
+  window.activateSMARTLIGHTCOMPONENT = (pin) => {
+    setOutputLog((prev) => [...prev, `SmartLightComponent on pin ${pin}: It is active.`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightcomponent" && (!comp.pin || comp.pin === pin) ? { ...comp, state: "active", pin } : comp
+      )
+    );
+  };
+
+  window.activateSMARTLIGHTLED = (pin) => {
+    setOutputLog((prev) => [...prev, `SmartLightLED on pin ${pin}: It is ready to glow.`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightled" && (!comp.pin || comp.pin === pin) ? { ...comp, state: "ready", pin } : comp
+      )
+    );
+  };
+
+  window.smartLightVibgyor = (pin) => {
+    setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Displaying VIBGYOR colors`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightled" && (!comp.pin || comp.pin === pin) ? { ...comp, state: "vibgyor", pin, on: true } : comp
+      )
+    );
+  };
+
+  window.setSmartLightLedColourSeconds = async (led, colour, seconds, pin) => {
+    setOutputLog((prev) => [...prev, `SmartLightLED ${led} on pin ${pin}: Displaying ${colour} for ${seconds} seconds`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightled" && (!comp.pin || comp.pin === pin)
+          ? { ...comp, state: "glowing", color: colour, duration: parseFloat(seconds), power: 100, on: true, led }
+          : comp
+      )
+    );
+    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightled" && (!comp.pin || comp.pin === pin) && comp.led === led
+          ? { ...comp, state: null, color: null, duration: null, power: null, on: false }
+          : comp
+      )
+    );
+    setOutputLog((prev) => [...prev, `SmartLightLED ${led} on pin ${pin}: Turned off after ${seconds} seconds`]);
+  };
+
+  window.setSmartLightLedColourPower = (led, colour, power, pin) => {
+    setOutputLog((prev) => [...prev, `SmartLightLED ${led} on pin ${pin}: Set to ${colour} at ${power}% power`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightled" && (!comp.pin || comp.pin === pin)
+          ? { ...comp, state: "glowing", color: colour, power: parseInt(power), on: true, led }
+          : comp
+      )
+    );
+  };
+
+  window.setSmartLightLedDropdownColourPower = (led, colour, power, pin) => {
+    setOutputLog((prev) => [...prev, `SmartLightLED ${led} on pin ${pin}: Set to ${colour} with power ${power === "100" ? "ON" : "OFF"}`]);
+    setComponents((prev) =>
+      prev.map((comp) =>
+        comp.type === "smartlightled" && (!comp.pin || comp.pin === pin)
+          ? { ...comp, state: power === "100" ? "glowing" : null, color: colour, power: parseInt(power), on: power === "100", led }
+          : comp
+      )
+    );
+  };
+    
   const activateULTRASONIC_SENSOR = (pin) => {
     console.log(`Activating ULTRASONIC_SENSOR on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Ultrasonic Sensor on pin ${pin}: Activated`]);
@@ -467,6 +1074,21 @@ const IoTSimulator = () => {
       updateComponentState(component.id, { state: "on", pin });
     }
     window.measureDistanceWrapper();
+    checkConnection();
+  };
+  const startUltrasonicMode = (pin) => {
+    console.log(`Calling startUltrasonicMode("${pin}")`);
+    setOutputLog((prev) => [...prev, `Ultrasonic Sensor on pin ${pin}: Started continuous mode`]);
+    const component = findComponentByBridgePin(pin, "sensor");
+    if (component) {
+      updateComponentState(component.id, { state: "continuous", pin });
+      window.measureDistanceWrapper();
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No Ultrasonic Sensor found for pin ${pin}`,
+      ]);
+    }
     checkConnection();
   };
 
@@ -480,6 +1102,26 @@ const IoTSimulator = () => {
     checkConnection();
   };
 
+  const resetOLED = (pin) => {
+    console.log(`Calling resetOLED("${pin}")`);
+    setOutputLog((prev) => [...prev, `OLED on pin ${pin}: Reset`]);
+    const component = findComponentByBridgePin(pin, "oled");
+    if (component) {
+      updateComponentState(component.id, {
+        state: "reset",
+        displayText: "",
+        shapes: [],
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No OLED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
   const displayOLED = (text, pin) => {
     console.log(`Calling displayOLED(${text}, "${pin}")`);
     const displayText = String(text).replace(/^"|"$/g, "");
@@ -489,6 +1131,105 @@ const IoTSimulator = () => {
       updateComponentState(component.id, {
         state: "displaying",
         displayText,
+        shapes: component.shapes || [],
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No OLED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const drawOLEDCircle = (x, y, radius, pin) => {
+    console.log(`Calling drawOLEDCircle(${x}, ${y}, ${radius}, "${pin}")`);
+    const xPos = Number(x);
+    const yPos = Number(y);
+    const rad = Number(radius);
+    setOutputLog((prev) => [...prev, `OLED on pin ${pin}: Drawing circle at (${xPos}, ${yPos}), radius ${rad}`]);
+    const component = findComponentByBridgePin(pin, "oled");
+    if (component) {
+      const newShape = { type: "circle", x: xPos, y: yPos, radius: rad, filled: false };
+      updateComponentState(component.id, {
+        state: "drawing",
+        shapes: [...(component.shapes || []), newShape],
+        displayText: component.displayText || "",
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No OLED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const drawOLEDPanel = (x1, y1, x2, y2, pin) => {
+    console.log(`Calling drawOLEDPanel(${x1}, ${y1}, ${x2}, ${y2}, "${pin}")`);
+    const x1Pos = Number(x1);
+    const y1Pos = Number(y1);
+    const x2Pos = Number(x2);
+    const y2Pos = Number(y2);
+    setOutputLog((prev) => [...prev, `OLED on pin ${pin}: Drawing panel from (${x1Pos}, ${y1Pos}) to (${x2Pos}, ${y2Pos})`]);
+    const component = findComponentByBridgePin(pin, "oled");
+    if (component) {
+      const newShape = { type: "panel", x1: x1Pos, y1: y1Pos, x2: x2Pos, y2: y2Pos };
+      updateComponentState(component.id, {
+        state: "drawing",
+        shapes: [...(component.shapes || []), newShape],
+        displayText: component.displayText || "",
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No OLED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const drawOLEDPixel = (x, y, pin) => {
+    console.log(`Calling drawOLEDPixel(${x}, ${y}, "${pin}")`);
+    const xPos = Number(x);
+    const yPos = Number(y);
+    setOutputLog((prev) => [...prev, `OLED on pin ${pin}: Drawing pixel at (${xPos}, ${yPos})`]);
+    const component = findComponentByBridgePin(pin, "oled");
+    if (component) {
+      const newShape = { type: "pixel", x: xPos, y: yPos };
+      updateComponentState(component.id, {
+        state: "drawing",
+        shapes: [...(component.shapes || []), newShape],
+        displayText: component.displayText || "",
+        pin,
+      });
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Error: No OLED found for pin ${pin}`,
+      ]);
+    }
+    checkConnection();
+  };
+
+  const drawOLEDRectangle = (x, y, length, breadth, radius, pin) => {
+    console.log(`Calling drawOLEDRectangle(${x}, ${y}, ${length}, ${breadth}, ${radius}, "${pin}")`);
+    const xPos = Number(x);
+    const yPos = Number(y);
+    const len = Number(length);
+    const bre = Number(breadth);
+    const rad = Number(radius);
+    setOutputLog((prev) => [...prev, `OLED on pin ${pin}: Drawing rectangle at (${xPos}, ${yPos}), length=${len}, breadth=${bre}, radius=${rad}`]);
+    const component = findComponentByBridgePin(pin, "oled");
+    if (component) {
+      const newShape = { type: "rectangle", x: xPos, y: yPos, length: len, breadth: bre, radius: rad, filled: false };
+      updateComponentState(component.id, {
+        state: "drawing",
+        shapes: [...(component.shapes || []), newShape],
+        displayText: component.displayText || "",
         pin,
       });
     } else {
@@ -531,31 +1272,6 @@ const IoTSimulator = () => {
     return { xValue, yValue };
   };
 
-  const activateSMARTLIGHT = (pin) => {
-    console.log(`Activating SMARTLIGHT on pin ${pin}`);
-    setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Activated`]);
-    const component = findComponentByBridgePin(pin, "smartlight");
-    if (component) {
-      updateComponentState(component.id, { state: "on", pin });
-    }
-    checkConnection();
-  };
-
-  const smartLightVibgyor = (pin) => {
-    console.log(`Calling smartLightVibgyor("${pin}")`);
-    setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Displaying VIBGYOR`]);
-    const component = findComponentByBridgePin(pin, "smartlight");
-    if (component) {
-      updateComponentState(component.id, { state: "vibgyor", pin });
-    } else {
-      setOutputLog((prev) => [
-        ...prev,
-        `Error: No Smart Light found for pin ${pin}`,
-      ]);
-    }
-    checkConnection();
-  };
-
   const setLedRGB = (r, g, b, pin) => {
     console.log(`Calling setLedRGB(${r}, ${g}, ${b}, "${pin}")`);
     const red = Math.max(0, Math.min(255, Number(r)));
@@ -579,6 +1295,7 @@ const IoTSimulator = () => {
     }
     checkConnection();
   };
+
   const activateOBJECT = (pin) => {
     console.log(`Activating OBJECT on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Object on pin ${pin}: Detected`]);
@@ -589,45 +1306,35 @@ const IoTSimulator = () => {
     window.measureDistanceWrapper();
     checkConnection();
   };
- const measureDistance = (components, setOutputLog) => {
-  const sensor = components.find((comp) => comp.type === "sensor");
-  const object = components.find((comp) => comp.type === "object");
-
-  if (sensor && object) {
-    const pixelDistance = Math.sqrt(
-      Math.pow(sensor.x - object.x, 2) + Math.pow(sensor.y - object.y, 2)
-    );
-
-    const mmDistance = (pixelDistance * 25.4 / 96).toFixed(2);
-
-    const xDifference = Math.abs(sensor.x - object.x);
-    const tolerancePx = 20;
-    const toleranceMm = (tolerancePx * 25.4 / 96).toFixed(2);
-
-    if (xDifference > tolerancePx) {
-      const xDiffMm = (xDifference * 25.4 / 96).toFixed(2);
+  const measureDistance = (components, setOutputLog) => {
+    const sensor = components.find((comp) => comp.type === "sensor");
+    const object = components.find((comp) => comp.type === "object");
+    if (sensor && object) {
+      const distance = Math.sqrt(
+        Math.pow(sensor.x - object.x, 2) + Math.pow(sensor.y - object.y, 2)
+      ).toFixed(2);
       setOutputLog((prev) => [
         ...prev,
-        `Object is not in correct position: it should be above the sensor (x-axis misalignment of ${xDiffMm} mm).`,
+        `Ultrasonic Sensor detected: Distance to Object is ${distance} pixels`,
+      ]);
+    } else {
+      setOutputLog((prev) => [
+        ...prev,
+        `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
+          !object ? "Object missing" : ""
+        }`,
       ]);
     }
-
-    setOutputLog((prev) => [
-      ...prev,
-      `Ultrasonic Sensor detected: Distance to Object is ${mmDistance} mm`,
-    ]);
-  } else {
-    setOutputLog((prev) => [
-      ...prev,
-      `Measurement failed: ${!sensor ? "Sensor missing" : ""} ${
-        !object ? "Object missing" : ""
-      }`,
-    ]);
-  }
-};
-
-  
-
+  };
+  const toggleStoreMinimize = () => {
+    if (isStoreMinimized) {
+      setTabValue(previousTabValue); // Restore previous tab
+    } else {
+      setPreviousTabValue(tabValue);
+      setTabValue(null);
+    }
+    setIsStoreMinimized(!isStoreMinimized);
+  };
 
   const handleAddComponent = (id, name, type, image, defaultPin) => {
     setComponents((prev) => [
@@ -645,13 +1352,20 @@ const IoTSimulator = () => {
         value: type === "sevensegment" ? 0 : null,
         angle: type === "pantilt" ? { pan: 0, tilt: 0 } : null,
         speed: type === "motor" ? 0 : null,
-        direction: type === "motor" ? "forward" : null,
+        direction: type === "motor" ? "clockwise" : null,
         displayText: type === "oled" ? "" : null,
+        shapes: type === "oled" ? [] : null,
         xValue: type === "joystick" ? 0 : null,
         yValue: type === "joystick" ? 0 : null,
         r: type === "led" ? 0 : null,
         g: type === "led" ? 0 : null,
         b: type === "led" ? 0 : null,
+        r: type === "led" || type === "smartlight" ? 0 : null,
+        g: type === "led" || type === "smartlight" ? 0 : null,
+        b: type === "led" || type === "smartlight" ? 0 : null,
+        duration: type === "smartlight" ? 0 : null,
+        power: type === "smartlight" ? 0 : null,
+        led: type === "smartlight" ? null : null,
       },
     ]);
   };
@@ -667,7 +1381,6 @@ const IoTSimulator = () => {
       };
       console.log("Adding wire:", newWire);
 
-      // Update connectedPins for the target component
       setComponents((prevComps) => {
         const sourceIsBridge = prevComps.find((comp) => comp.id === sourceId)?.type === "bridge";
         const targetIsBridge = prevComps.find((comp) => comp.id === targetId)?.type === "bridge";
@@ -767,6 +1480,7 @@ const IoTSimulator = () => {
         speed: comp.speed,
         direction: comp.direction,
         displayText: comp.displayText,
+        shapes: comp.shapes,
         xValue: comp.xValue,
         yValue: comp.yValue,
         r: comp.r,
@@ -809,6 +1523,7 @@ const IoTSimulator = () => {
         speed: comp.speed,
         direction: comp.direction,
         displayText: comp.displayText,
+        shapes: comp.shapes,
         xValue: comp.xValue,
         yValue: comp.yValue,
         r: comp.r,
@@ -869,35 +1584,204 @@ const IoTSimulator = () => {
       javascriptGenerator[comp.type] = function () {
         const pin = comp.defaultPin;
         let device = pinDeviceMap[normalizePin(pin)]?.device || comp.type.toUpperCase();
+      
         // Explicitly map 'sensor' type to 'ULTRASONIC_SENSOR'
         if (comp.type === "sensor") {
           device = "ULTRASONIC_SENSOR";
         }
-        return `activate${device}("${pin}");\n`;
+      
+        // Declare a variable for the ultrasonic sensor reading
+        const varName = `distance_${normalizePin(pin)}`;
+        return `const ${varName} = activate${device}("${pin}");\n`;
       };
+      
     });
+    Blockly.Blocks["smartlight_color_duration"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Set Smart Light Color:")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["Red", "red"],
+              ["Green", "green"],
+              ["Blue", "blue"],
+              ["Yellow", "yellow"],
+              ["Cyan", "cyan"],
+              ["Magenta", "magenta"],
+              ["White", "white"],
+            ]),
+            "COLOR"
+          );
+        this.appendValueInput("SECONDS")
+          .setCheck("Number")
+          .appendField("Duration (s):");
+        this.appendDummyInput()
+          .appendField("Power:")
+          .appendField(
+            new Blockly.FieldDropdown([["ON", "ON"], ["OFF", "OFF"]]),
+            "POWER"
+          );
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Sets the Smart Light to a color for a duration with power state");
+      },
+    };
+    javascriptGenerator["smartlight_color_duration"] = function (block) {
+      const color = block.getFieldValue("COLOR");
+      const seconds =
+        javascriptGenerator.valueToCode(
+          block,
+          "SECONDS",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "1";
+      const power = block.getFieldValue("POWER");
+      const pin = "C01";
+      return `await setSmartLightColor("${color}", ${seconds}, "${power}", "${pin}");\n`;
+    };
+
+    Blockly.Blocks["smartlight_led_control"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Set Smart Light LED:")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["LED1", "LED1"],
+              ["LED2", "LED2"],
+              ["LED3", "LED3"],
+            ]),
+            "LED"
+          );
+        this.appendDummyInput()
+          .appendField("Color:")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["Red", "red"],
+              ["Green", "green"],
+              ["Blue", "blue"],
+              ["Yellow", "yellow"],
+              ["Cyan", "cyan"],
+              ["Magenta", "magenta"],
+              ["White", "white"],
+            ]),
+            "COLOR"
+          );
+        this.appendDummyInput()
+          .appendField("Power:")
+          .appendField(
+            new Blockly.FieldDropdown([["ON", "ON"], ["OFF", "OFF"]]),
+            "POWER"
+          );
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Controls a specific Smart Light LED with color and power state");
+      },
+    };
+    javascriptGenerator["smartlight_led_control"] = function (block) {
+      const led = block.getFieldValue("LED");
+      const color = block.getFieldValue("COLOR");
+      const power = block.getFieldValue("POWER");
+      const pin = "C01";
+      return `setSmartLightLed("${led}", "${color}", "${power}", "${pin}");\n`;
+    };
+
     Blockly.Blocks["sevensegment_display"] = {
       init: function () {
-        this.appendValueInput("NUMBER")
-          .setCheck("Number")
-          .appendField("Display on 7-Segment");
+        this.appendDummyInput()
+          .appendField("Display Number on 7-Segment")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["0", "0"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"],
+              ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"]
+            ]),
+            "NUMBER"
+          );
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(180);
         this.setTooltip("Displays a number (0-9) on the 7-segment display");
-      },
+      }
     };
+    
     javascriptGenerator["sevensegment_display"] = function (block) {
-      const number =
-        javascriptGenerator.valueToCode(
-          block,
-          "NUMBER",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+      const number = block.getFieldValue("NUMBER");
       const pin = "C03";
       return `displaySevenSegment(${number}, "${pin}");\n`;
     };
-
+    
+    Blockly.Blocks["sevensegment_manual"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("7-Segment Display")
+          
+        this.appendDummyInput()
+          .appendField("Segment a:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_A");
+        this.appendDummyInput()
+          .appendField("Segment b:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_B");
+        this.appendDummyInput()
+          .appendField("Segment c:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_C");
+        this.appendDummyInput()
+          .appendField("Segment d:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_D");
+        this.appendDummyInput()
+          .appendField("Segment e:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_E");
+        this.appendDummyInput()
+          .appendField("Segment f:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_F");
+        this.appendDummyInput()
+          .appendField("Segment g:")
+          .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_G");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Control individual segments (a-g) of a 7-segment display with ON/OFF options");
+      },
+    };
+    
+    javascriptGenerator["sevensegment_manual"] = function (block) {
+      const pin = block.getFieldValue("PIN") || "C03";
+      const segA = block.getFieldValue("SEG_A") === "TRUE";
+      const segB = block.getFieldValue("SEG_B") === "TRUE";
+      const segC = block.getFieldValue("SEG_C") === "TRUE";
+      const segD = block.getFieldValue("SEG_D") === "TRUE";
+      const segE = block.getFieldValue("SEG_E") === "TRUE";
+      const segF = block.getFieldValue("SEG_F") === "TRUE";
+      const segG = block.getFieldValue("SEG_G") === "TRUE";
+      const segments = { a: segA, b: segB, c: segC, d: segD, e: segE, f: segF, g: segG };
+      return `controlSevenSegment(${JSON.stringify(segments)}, "${pin}");\n`;
+    };
+   
+    
+    Blockly.Blocks["sevensegment_letter"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Display Letter on 7-Segment")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"], ["E", "E"], ["F", "F"],
+              ["H", "H"], ["J", "J"], ["K", "K"], ["L", "L"], ["N", "N"], ["P", "P"],
+              ["R", "R"], ["U", "U"]
+            ]),
+            "LETTER"
+          );
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Displays a letter (A-F, H, J, K, L, N, P, R, U) on the 7-segment display");
+      }
+    };
+    
+    javascriptGenerator["sevensegment_letter"] = function (block) {
+      const letter = block.getFieldValue("LETTER");
+      const pin = "C03";
+      return `displaySevenSegmentLetter("${letter}", "${pin}");\n`;
+    };
+    
     Blockly.Blocks["pantilt_control"] = {
       init: function () {
         this.appendValueInput("PAN")
@@ -929,17 +1813,97 @@ const IoTSimulator = () => {
       return `controlPanTilt(${pan}, ${tilt}, "${pin}");\n`;
     };
 
+    Blockly.Blocks["servo_pan"] = {
+      init: function () {
+        this.appendValueInput("DEGREES")
+          .setCheck("Number")
+          .appendField("Servo Pan Angle:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Sets the servo pan angle (0-180 degrees)");
+      },
+    };
+    javascriptGenerator["servo_pan"] = function (block) {
+      const degrees =
+        javascriptGenerator.valueToCode(
+          block,
+          "DEGREES",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const pin = "C09";
+      return `controlServoPan(${degrees}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["servo_tilt"] = {
+      init: function () {
+        this.appendValueInput("DEGREES")
+          .setCheck("Number")
+          .appendField("Servo Tilt Angle:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Sets the servo tilt angle (0-180 degrees)");
+      },
+    };
+    javascriptGenerator["servo_tilt"] = function (block) {
+      const degrees =
+        javascriptGenerator.valueToCode(
+          block,
+          "DEGREES",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const pin = "C09";
+      return `controlServoTilt(${degrees}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["servo_mode"] = {
+      init: function () {
+        this.appendValueInput("DEGREES")
+          .setCheck("Number")
+          .appendField("Servo Mode Angle:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Sets both servo angles to the same value (0-180 degrees)");
+      },
+    };
+    javascriptGenerator["servo_mode"] = function (block) {
+      const degrees =
+        javascriptGenerator.valueToCode(
+          block,
+          "DEGREES",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const pin = "C09";
+      return `controlServoMode(${degrees}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["servo_lookup"] = {
+      init: function () {
+        this.appendDummyInput().appendField("Servo Look Up");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Sets servo to look up position");
+      },
+    };
+    javascriptGenerator["servo_lookup"] = function () {
+      const pin = "C09";
+      return `servoLookUp("${pin}");\n`;
+    };
+
     Blockly.Blocks["motor_control"] = {
       init: function () {
         this.appendValueInput("SPEED")
-          
+          .setCheck("Number")
           .appendField("Control Motor - Speed:");
         this.appendDummyInput()
           .appendField("Direction:")
           .appendField(
             new Blockly.FieldDropdown([
-              ["Forward", "FORWARD"],
-              ["Backward", "BACKWARD"],
+              ["Clockwise", "CLOCKWISE"],
+              ["Anticlockwise", "ANTICLOCKWISE"],
             ]),
             "DIRECTION"
           );
@@ -956,9 +1920,60 @@ const IoTSimulator = () => {
           "SPEED",
           javascriptGenerator.ORDER_ATOMIC
         ) || "0";
-      const direction = block.getFieldValue("DIRECTION") || "FORWARD";
+      const direction = block.getFieldValue("DIRECTION") || "CLOCKWISE";
       const pin = "C06";
       return `controlMotor(${speed}, "${direction}", "${pin}");\n`;
+    };
+
+    Blockly.Blocks["motor_driver"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Motor Driver - Dir1:")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["Clockwise", "CLOCKWISE"],
+              ["Anticlockwise", "ANTICLOCKWISE"],
+            ]),
+            "DIR1"
+          );
+                this.appendValueInput("SPEED1")
+          .setCheck("Number")
+          .appendField("Speed1:");
+        this.appendDummyInput()
+          .appendField("Dir2:")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["Clockwise", "CLOCKWISE"],
+              ["Anticlockwise", "ANTICLOCKWISE"],
+            ]),
+            "DIR2"
+          );
+        this.appendValueInput("SPEED2")
+          .setCheck("Number")
+          .appendField("Speed2:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Controls two motors with directions and speeds (0-255)");
+      },
+    };
+    javascriptGenerator["motor_driver"] = function (block) {
+      const dir1 = block.getFieldValue("DIR1") || "CLOCKWISE";
+      const speed1 =
+        javascriptGenerator.valueToCode(
+          block,
+          "SPEED1",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const dir2 = block.getFieldValue("DIR2") || "CLOCKWISE";
+      const speed2 =
+        javascriptGenerator.valueToCode(
+          block,
+          "SPEED2",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const pin = "C06";
+      return `controlMotorDriver("${dir1}", "${dir2}", ${speed1}, ${speed2}, "${pin}");\n`;
     };
 
     Blockly.Blocks["buzzer_frequency"] = {
@@ -992,51 +2007,141 @@ const IoTSimulator = () => {
       return `await playBuzzerFrequency(${frequency}, ${duration}, "${pin}");\n`;
     };
 
-    Blockly.Blocks["led_rgb_intensity"] = {
+    Blockly.Blocks["buzzer_song_selector"] = {
       init: function () {
-        this.appendValueInput("RED")
-          .setCheck("Number")
-          .appendField("Set RGB LED - Red:");
-        this.appendValueInput("GREEN")
-          .setCheck("Number")
-          .appendField("Green:");
-        this.appendValueInput("BLUE")
-          .setCheck("Number")
-          .appendField("Blue:");
+        this.appendDummyInput()
+          .appendField("Play Song on Buzzer")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["Happy Birthday", "happy_birthday"],
+              ["Sare Gama Pa", "sare_gama_pa"]
+            ]),
+            "SONG"
+          );
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(180);
-        this.setTooltip("Sets the RGB LED color intensities (0-255)");
+        this.setTooltip("Plays a selected tune on the buzzer.");
       },
     };
-    javascriptGenerator["led_rgb_intensity"] = function (block) {
-      const red =
-        javascriptGenerator.valueToCode(
-          block,
-          "RED",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
-      const green =
-        javascriptGenerator.valueToCode(
-          block,
-          "GREEN",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
-      const blue =
-        javascriptGenerator.valueToCode(
-          block,
-          "BLUE",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
-      const pin = "C011";
+    javascriptGenerator["buzzer_song_selector"] = function (block) {
+      const song = block.getFieldValue("SONG"); // Get the selected song
+      const pin = "C01"; // Fixed pin
+    
+      // Return the appropriate function based on the selected song
+      if (song === "happy_birthday") {
+        return `await playBuzzerHappyBirthday("${pin}");\n`;
+      } else if (song === "sare_gama_pa") {
+        return `await playBuzzerSareGamaPa("${pin}");\n`;
+      }
+    };
+        
+
+    
+    
+    Blockly.Blocks["led_manual_rgb"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Set RGB LED")
+          .appendField("Red")
+          .appendField(new Blockly.FieldNumber(0, 0, 255), "RED")
+          .appendField("Green")
+          .appendField(new Blockly.FieldNumber(0, 0, 255), "GREEN")
+          .appendField("Blue")
+          .appendField(new Blockly.FieldNumber(0, 0, 255), "BLUE");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(230);
+        this.setTooltip("Set RGB LED intensity values for Red, Green, and Blue. Pin is fixed to C011.");
+      }
+    };
+    
+    javascriptGenerator["led_manual_rgb"] = function (block) {
+      const red = block.getFieldValue("RED") || 0;
+      const green = block.getFieldValue("GREEN") || 0;
+      const blue = block.getFieldValue("BLUE") || 0;
+      const pin = "C011"; // Fixed pin
+    
       return `setLedRGB(${red}, ${green}, ${blue}, "${pin}");\n`;
     };
+    
+        
+    
+
+   // BLOCK: Set predefined named color
+Blockly.Blocks["led_color"] = {
+  init: function () {
+    this.appendDummyInput()
+      .appendField("Set LED Color:")
+      .appendField(
+        new Blockly.FieldDropdown([
+          ["Red", "red"],
+          ["Green", "green"],
+          ["Blue", "blue"],
+          ["Yellow", "yellow"],
+          ["Cyan", "cyan"],
+          ["Magenta", "magenta"],
+          ["Orange", "orange"],
+          ["Purple", "purple"],
+          ["Pink", "pink"],
+          ["Brown", "brown"],
+          ["Black", "black"],
+          ["White", "white"],
+          ["Grey", "grey"],
+          ["Lime", "lime"],
+          ["Navy", "navy"],
+          ["Teal", "teal"],
+          ["Maroon", "maroon"],
+          ["Olive", "olive"],
+          ["SkyBlue", "skyblue"],
+          ["AliceBlue", "aliceblue"],
+          ["Gold", "gold"],
+          ["Indigo", "indigo"]
+        ]),
+        "COLOR"
+      );
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(180);
+    this.setTooltip("Sets the LED to a predefined color");
+  },
+};
+
+javascriptGenerator["led_color"] = function (block) {
+  const color = block.getFieldValue("COLOR");
+  const pin = "C011";
+  return `setLedColor("${color}", "${pin}");\n`;
+};
+
+// BLOCK: Set RGB LED with intensity using hex picker
+Blockly.Blocks["led_rgb_intensity"] = {
+  init: function () {
+    this.appendDummyInput()
+      .appendField("Set RGB LED Color:")
+      .appendField(new Blockly.FieldColour("#ff0000"), "COLOR");
+    this.setPreviousStatement(true, null);
+    this.setNextStatement(true, null);
+    this.setColour(180);
+    this.setTooltip("Pick a color to set the RGB LED.");
+  },
+};
+
+javascriptGenerator["led_rgb_intensity"] = function (block) {
+  const color = block.getFieldValue("COLOR"); // e.g., "#ff0000"
+  const red = parseInt(color.substring(1, 3), 16);
+  const green = parseInt(color.substring(3, 5), 16);
+  const blue = parseInt(color.substring(5, 7), 16);
+  const pin = "C011";
+  return `setLedRGB(${red}, ${green}, ${blue}, "${pin}");\n`;
+};
+
+
 
     Blockly.Blocks["oled_display"] = {
       init: function () {
         this.appendValueInput("TEXT")
           .setCheck("String")
-          .appendField("Display on OLED");
+          .appendField("Display Text on OLED");
         this.setPreviousStatement(true, null);
         this.setNextStatement(true, null);
         this.setColour(180);
@@ -1052,6 +2157,212 @@ const IoTSimulator = () => {
         ) || '""';
       const pin = "C01";
       return `displayOLED(${text}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["oled_reset"] = {
+      init: function () {
+        this.appendDummyInput().appendField("Reset OLED");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Clears the OLED display");
+      },
+    };
+    javascriptGenerator["oled_reset"] = function () {
+      const pin = "C01";
+      return `resetOLED("${pin}");\n`;
+    };
+
+    Blockly.Blocks["oled_circle"] = {
+      init: function () {
+        this.appendValueInput("X")
+          .setCheck("Number")
+          .appendField("Draw OLED Circle - X:");
+        this.appendValueInput("Y")
+          .setCheck("Number")
+          .appendField("Y:");
+        this.appendValueInput("RADIUS")
+          .setCheck("Number")
+          .appendField("Radius:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Draws a non-filled circle on the OLED");
+      },
+    };
+    javascriptGenerator["oled_circle"] = function (block) {
+      const x =
+        javascriptGenerator.valueToCode(
+          block,
+          "X",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const y =
+        javascriptGenerator.valueToCode(
+          block,
+          "Y",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const radius =
+        javascriptGenerator.valueToCode(
+          block,
+          "RADIUS",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "10";
+      const pin = "C01";
+      return `drawOLEDCircle(${x}, ${y}, ${radius}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["oled_panel"] = {
+      init: function () {
+        this.appendValueInput("X1")
+          .setCheck("Number")
+          .appendField("Draw OLED Panel - X1:");
+        this.appendValueInput("Y1")
+          .setCheck("Number")
+          .appendField("Y1:");
+        this.appendValueInput("X2")
+          .setCheck("Number")
+          .appendField("X2:");
+        this.appendValueInput("Y2")
+          .setCheck("Number")
+          .appendField("Y2:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Draws a panel (line) on the OLED");
+      },
+    };
+    javascriptGenerator["oled_panel"] = function (block) {
+      const x1 =
+        javascriptGenerator.valueToCode(
+          block,
+          "X1",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const y1 =
+        javascriptGenerator.valueToCode(
+          block,
+          "Y1",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const x2 =
+        javascriptGenerator.valueToCode(
+          block,
+          "X2",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "10";
+      const y2 =
+        javascriptGenerator.valueToCode(
+          block,
+          "Y2",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "10";
+      const pin = "C01";
+      return `drawOLEDPanel(${x1}, ${y1}, ${x2}, ${y2}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["oled_pixel"] = {
+      init: function () {
+        this.appendValueInput("X")
+          .setCheck("Number")
+          .appendField("Draw OLED Pixel - X:");
+        this.appendValueInput("Y")
+          .setCheck("Number")
+          .appendField("Y:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Draws a single pixel on the OLED");
+      },
+    };
+    javascriptGenerator["oled_pixel"] = function (block) {
+      const x =
+        javascriptGenerator.valueToCode(
+          block,
+          "X",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const y =
+        javascriptGenerator.valueToCode(
+          block,
+          "Y",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const pin = "C01";
+      return `drawOLEDPixel(${x}, ${y}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["oled_rectangle"] = {
+      init: function () {
+        this.appendValueInput("X")
+          .setCheck("Number")
+          .appendField("Draw OLED Rectangle - X:");
+        this.appendValueInput("Y")
+          .setCheck("Number")
+          .appendField("Y:");
+        this.appendValueInput("LENGTH")
+          .setCheck("Number")
+          .appendField("Length:");
+        this.appendValueInput("BREADTH")
+          .setCheck("Number")
+          .appendField("Breadth:");
+        this.appendValueInput("RADIUS")
+          .setCheck("Number")
+          .appendField("Radius:");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Draws a non-filled rectangle with rounded corners on the OLED");
+      },
+    };
+    javascriptGenerator["oled_rectangle"] = function (block) {
+      const x =
+        javascriptGenerator.valueToCode(
+          block,
+          "X",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const y =
+        javascriptGenerator.valueToCode(
+          block,
+          "Y",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const length =
+        javascriptGenerator.valueToCode(
+          block,
+          "LENGTH",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "10";
+      const breadth =
+        javascriptGenerator.valueToCode(
+          block,
+          "BREADTH",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "10";
+      const radius =
+        javascriptGenerator.valueToCode(
+          block,
+          "RADIUS",
+          javascriptGenerator.ORDER_ATOMIC
+        ) || "0";
+      const pin = "C01";
+      return `drawOLEDRectangle(${x}, ${y}, ${length}, ${breadth}, ${radius}, "${pin}");\n`;
+    };
+
+    Blockly.Blocks["ultrasonic_mode"] = {
+      init: function () {
+        this.appendDummyInput().appendField("Start Ultrasonic Continuous Mode");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Starts continuous distance measurement");
+      },
+    };
+    javascriptGenerator["ultrasonic_mode"] = function () {
+      const pin = "C12";
+      return `startUltrasonicMode("${pin}");\n`;
     };
 
     Blockly.Blocks["delay"] = {
@@ -1093,8 +2404,9 @@ const IoTSimulator = () => {
           "MESSAGE",
           javascriptGenerator.ORDER_ATOMIC
         ) || '""';
-      return `alert(${message});\n`;
+      return `alert("Total distance is " + ${message});\n`;
     };
+    
 
     Blockly.Blocks["json_object"] = {
       init: function () {
@@ -1152,7 +2464,6 @@ const IoTSimulator = () => {
             { kind: "block", type: "math_modulo" },
             { kind: "block", type: "math_random_int" },
             { kind: "block", type: "math_trig" },
-          
           ],
         },
         {
@@ -1173,7 +2484,6 @@ const IoTSimulator = () => {
             { kind: "block", type: "lists_length" },
             { kind: "block", type: "lists_getIndex" },
             { kind: "block", type: "lists_setIndex" },
-            
             { kind: "block", type: "lists_reverse" },
           ],
         },
@@ -1197,140 +2507,205 @@ const IoTSimulator = () => {
         { kind: "category", name: "Variables", colour: "#A6915C", custom: "VARIABLE" },
         {
           kind: "category",
-          name: "Display",
+          name: "Seven Segment Display",
           colour: "#0288d1",
           contents: [
             { kind: "block", type: "sevensegment" },
             { kind: "block", type: "sevensegment_display" },
+            { kind: "block", type: "sevensegment_letter" },
+            { kind: "block", type: "sevensegment_manual" },
+            
+            // { kind: "block", type: "oled" },
+            // { kind: "block", type: "oled_display" },
+            // { kind: "block", type: "oled_reset" },
+            // { kind: "block", type: "oled_circle" },
+            // { kind: "block", type: "oled_panel" },
+            // { kind: "block", type: "oled_pixel" },
+            // { kind: "block", type: "oled_rectangle" },
+          ],
+        },
+        {
+          kind: "category",
+          name: "OLED Display",
+          colour: "#0288d1",
+          contents: [
+            // { kind: "block", type: "sevensegment" },
+            // { kind: "block", type: "sevensegment_display" },
+            // { kind: "block", type: "sevensegment_letter" },
+            // { kind: "block", type: "sevensegment_manual" },
+            
             { kind: "block", type: "oled" },
             { kind: "block", type: "oled_display" },
-          ],
-        },
-        {
-          kind: "category",
-          name: "Sound",
-          colour: "#00897b",
-          contents: [
-            { kind: "block", type: "buzzer" },
-            { kind: "block", type: "buzzer_frequency" },
-          ],
-        },
-        {
-          kind: "category",
-          name: "Bridge",
-          colour: "#2e7d32",
-          contents: [
-            { kind: "block", type: "bridge" },
+            { kind: "block", type: "oled_reset" },
+            { kind: "block", type: "oled_circle" },
+            { kind: "block", type: "oled_panel" },
+            { kind: "block", type: "oled_pixel" },
+            { kind: "block", type: "oled_rectangle" },
           ],
         },
         {
           kind: "category",
           name: "Motor",
-          colour: "#d81b60",
+          colour: "#5CA699",
           contents: [
             { kind: "block", type: "motor" },
             { kind: "block", type: "motor_control" },
+            { kind: "block", type: "motor_driver" },
+            // { kind: "block", type: "pantilt" },
+            // { kind: "block", type: "pantilt_control" },
+            // { kind: "block", type: "servo_pan" },
+            // { kind: "block", type: "servo_tilt" },
+            // { kind: "block", type: "servo_mode" },
+            // { kind: "block", type: "servo_lookup" },
+          ],
+        },
+        {
+          kind: "category",
+          name: "Pan and Tilt",
+          colour: "#5CA699",
+          contents: [
+            // { kind: "block", type: "motor" },
+            // { kind: "block", type: "motor_control" },
+            // { kind: "block", type: "motor_driver" },
             { kind: "block", type: "pantilt" },
             { kind: "block", type: "pantilt_control" },
+            { kind: "block", type: "servo_pan" },
+            { kind: "block", type: "servo_tilt" },
+            { kind: "block", type: "servo_mode" },
+            { kind: "block", type: "servo_lookup" },
           ],
         },
         {
           kind: "category",
-          name: "Sensor",
-          colour: "#fbc02d",
+          name: "Sound",
+          colour: "#A65C81",
           contents: [
-            { kind: "block", type: "sensor" },
+            { kind: "block", type: "buzzer" },
+            { kind: "block", type: "buzzer_frequency" },
+            { kind: "block", type: "buzzer_song_selector" },
           ],
         },
+        // {
+        //   kind: "category",
+        //   name: "Sensor",
+        //   colour: "#5C81A6",
+        //   contents: [
+        //     { kind: "block", type: "sensor" },
+        //     { kind: "block", type: "ultrasonic_mode" },
+        //   ],
+        // },
         {
           kind: "category",
-          name: "LED",
-          colour: "#d32f2f",
+          name: "Tri colour LED",
+          colour: "#A6915C",
           contents: [
             { kind: "block", type: "led" },
             { kind: "block", type: "led_rgb_intensity" },
+            { kind: "block", type: "led_color" },
+            { kind: "block", type: "led_manual_rgb" },
+            
+            // { kind: "block", type: "smartlight_vibgyor" },
+            // { kind: "block", type: "smartlightled_colour_seconds" },
+            // { kind: "block", type: "smartlightled_colour_power" },
+            // { kind: "block", type: "smartlightled_dropdown_colour_power" },
+           
+          ],
+        },
+        {
+          kind: "category",
+          name: "Smart Light led",
+          colour: "#A6915C",
+          contents: [
+            // { kind: "block", type: "led" },
+            // { kind: "block", type: "led_rgb_intensity" },
+            // { kind: "block", type: "led_color" },
+            // { kind: "block", type: "led_manual_rgb" },
+            
+            { kind: "block", type: "smartlight_vibgyor" },
+            { kind: "block", type: "smartlightled_colour_seconds" },
+            { kind: "block", type: "smartlightled_colour_power" },
+            { kind: "block", type: "smartlightled_dropdown_colour_power" },
+           
           ],
         },
         {
           kind: "category",
           name: "Joystick",
-          colour: "#7b1fa2",
-          contents: [
-            { kind: "block", type: "joystick" },
-          ],
+          colour: "#5CA65C",
+          contents: [{ kind: "block", type: "joystick" }],
         },
         {
           kind: "category",
           name: "Other",
-          colour: "#455a64",
-          contents: [
-            
-           
-            { kind: "block", type: "object" },
-          ],
+          colour: "#A65C5C",
+          contents: [{ kind: "block", type: "object" }],
         },
       ],
     };
 
-    const workspace = Blockly.inject(blocklyDiv.current, {
-      toolbox,
-      grid: { spacing: 20, length: 3, colour: "#b0bec5", snap: true },
-      zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3 },
+    workspaceRef.current = Blockly.inject(blocklyDiv.current, {
+      toolbox: toolbox,
+      scrollbars: true,
       trashcan: true,
+      sounds: true,
+      media: "https://unpkg.com/blockly@latest/media/",
+      zoom: { controls: true, wheel: true, startScale: 1.0, maxScale: 3, minScale: 0.3 },
+      grid: { spacing: 20, length: 3, colour: "#ccc", snap: true },
     });
-    workspaceRef.current = workspace;
 
-    return () => {
-      workspace.dispose();
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-    };
-  }, [components, wires]);
-
-  const generateCode = () => {
-    if (workspaceRef.current) {
+    workspaceRef.current.addChangeListener(() => {
       const code = javascriptGenerator.workspaceToCode(workspaceRef.current);
       setGeneratedCode(code);
-      console.log("Generated Code:", code);
-      return code;
-    }
-    return "";
-  };
+    });
+
+    return () => {
+      if (workspaceRef.current) {
+        workspaceRef.current.dispose();
+      }
+    };
+  }, []);
 
   const runCode = async () => {
-    const code = generateCode();
+    setOutputLog([]);
+    const code = generatedCode;
+    console.log("Generated Code:\n", code);
+
+    const context = {
+      alert,
+      activateBUZZER,
+      playBuzzerFrequency,
+      playBuzzerHappyBirthday,
+      activateSEVENSEGMENT,
+      displaySevenSegment,
+      displaySevenSegmentLetter,
+      activateSOIL_SENSOR,
+      activateDIP_SWITCH,
+      activatePAN_AND_TILT,
+      controlPanTilt,
+      controlServoPan,
+      controlServoTilt,
+      controlServoMode,
+      servoLookUp,
+      activateDC_MOTOR,
+      controlMotor,
+      controlMotorDriver,
+      activateTRI_COLOUR_LED,
+      setLedRGB,
+      setLedColor,
+      activateULTRASONIC_SENSOR,
+      startUltrasonicMode,
+      activateOLED,
+      resetOLED,
+      displayOLED,
+      drawOLEDCircle,
+      drawOLEDPanel,
+      drawOLEDPixel,
+      drawOLEDRectangle,
+      activateJOYSTICK,
+      activateOBJECT,
+    };
+
     try {
-      if (audioContextRef.current && audioContextRef.current.state === "suspended") {
-        await audioContextRef.current.resume();
-      }
-      const context = {
-        activateBUZZER,
-        playBuzzerFrequency,
-        activateSEVENSEGMENT,
-        displaySevenSegment,
-        activateSOIL_SENSOR,
-        activateDIP_SWITCH,
-        activatePAN_AND_TILT,
-        controlPanTilt,
-        activateDC_MOTOR,
-        controlMotor,
-        activateWEATHER_MONITORING,
-        activateTRI_COLOUR_LED,
-        activateULTRASONIC_SENSOR,
-        activateOLED,
-        displayOLED,
-        activateJOYSTICK,
-        readJoystick,
-        activateSMARTLIGHT,
-        smartLightVibgyor,
-        setLedRGB,
-        measureDistanceWrapper: () => measureDistance(components, setOutputLog),
-        alert: (msg) => {
-          window.alert(msg);
-          setOutputLog((prev) => [...prev, `Alert: ${msg}`]);
-        },
-      };
       const asyncFunc = new Function(
         ...Object.keys(context),
         `return (async () => {\n${code}\n})();`
@@ -1348,235 +2723,331 @@ const IoTSimulator = () => {
     displaySevenSegment(4, "C03");
   };
 
+  const testSevenSegmentLetter = () => {
+    displaySevenSegmentLetter("A", "C03");
+  };
+
   const testOLED = () => {
     displayOLED("Test", "C01");
+  };
+
+  const testOLEDCircle = () => {
+    drawOLEDCircle(64, 32, 20, "C01");
+  };
+
+  const testOLEDPanel = () => {
+    drawOLEDPanel(10, 10, 100, 50, "C01");
+  };
+
+  const testOLEDPixel = () => {
+    drawOLEDPixel(64, 32, "C01");
+  };
+
+  const testOLEDRectangle = () => {
+    drawOLEDRectangle(20, 20, 80, 40, 5, "C01");
   };
 
   const testPanTilt = () => {
     controlPanTilt(90, 45, "C09");
   };
 
+  const testServoPan = () => {
+    controlServoPan(90, "C09");
+  };
+
+  const testServoTilt = () => {
+    controlServoTilt(45, "C09");
+  };
+
   const testLED = () => {
     setLedRGB(255, 0, 0, "C011");
+  };
+
+  const testLEDColor = () => {
+    setLedColor("aliceblue", "C011");
   };
 
   const testMotor = () => {
     controlMotor(255, "FORWARD", "C06");
   };
 
+  const testMotorDriver = () => {
+    controlMotorDriver("FORWARD", "BACKWARD", 200, 200, "C06");
+  };
+
   const testBuzzer = () => {
     playBuzzerFrequency(440, 1, "C01");
+  };
+
+  const testBuzzerHappyBirthday = () => {
+    playBuzzerHappyBirthday("C01");
   };
 
   const testJoystick = () => {
     activateJOYSTICK("C10");
   };
 
+  const testUltrasonic = () => {
+    startUltrasonicMode("C12");
+  };
+
+
+  console.log('Theme:', theme); // Debug theme
+
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <DndProvider backend={HTML5Backend}>
-        <Box
-          sx={{
-            minHeight: "100vh",
-            background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
-          }}
-        >
-          <AppBar
-            position="static"
-            sx={{ background: "linear-gradient(to right, #0288d1, #4fc3f7)" }}
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <DndProvider backend={HTML5Backend}>
+          <Box
+            sx={{
+              minHeight: '100vh',
+              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+            }}
           >
-            <Toolbar>
-              <Typography
-                variant="h5"
-                sx={{ flexGrow: 1, fontWeight: 600, letterSpacing: 1 }}
-              >
-                Sheshgyan Simulator
-              </Typography>
-             
-              <Button
-                color="inherit"
-                onClick={runCode}
-                startIcon={<PlayArrowIcon />}
-              >
-                Run Code
-              </Button>
-            </Toolbar>
-          </AppBar>
-
-          <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ display: "flex", gap: 3, height: "80vh" }}>
-              <Box
-                sx={{
-                  width: isMinimized ? "100%" : "50%",
-                  bgcolor: "#fff",
-                  borderRadius: 3,
-                  boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
-                  p: 3,
-                  overflow: "hidden",
-                }}
-              >
+            <AppBar
+              position="static"
+              sx={{
+                background: 'linear-gradient(to right, #0288d1, #4fc3f7)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              }}
+            >
+              <Toolbar>
                 <Typography
-                  variant="h6"
-                  sx={{ mb: 2, color: "#0288d1", fontWeight: 500 }}
+                  variant="h5"
+                  sx={{ flexGrow: 1, fontWeight: 700, letterSpacing: 0.5 }}
                 >
-                  Blockly Editor
+                  Sheshgyan Simulator
                 </Typography>
-                <div
-                  ref={blocklyDiv}
-                  style={{
-                    height: "calc(100% - 40px)",
-                    width: "100%",
-                    borderRadius: 8,
-                    overflow: "hidden",
+                <Button
+                  color="inherit"
+                  onClick={runCode}
+                  startIcon={<PlayArrowIcon />}
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                    px: 2,
                   }}
-                />
-              </Box>
+                >
+                  Run Code
+                </Button>
+              </Toolbar>
+            </AppBar>
 
-              {!isMinimized && (
-                <Box sx={{ width: "50%", display: "flex", flexDirection: "column", gap: 3 }}>
+            <Container maxWidth="xxl" sx={{ mt: 4, mb: 4 }}>
+              <Box sx={{ display: 'flex', gap: 3, height: '80vh' }}>
+                <Box
+                  sx={{
+                    width: isMinimizedBlockly ? '10%' : isMinimizedWorkspace ? '90%' : '50%',
+                    bgcolor: '#fff',
+                    borderRadius: 12,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                    p: isMinimizedBlockly ? 1 : 3,
+                    overflow: 'hidden',
+                    transition: 'width 0.3s ease-in-out',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMinimizedBlockly ? 0 : 2 }}>
+                    <Typography variant="h6" sx={{ color: theme.palette.primary?.main || '#0288d1', fontWeight: 600 }}>
+                      Blockly Editor
+                    </Typography>
+                    <IconButton
+                      onClick={() => setIsMinimizedBlockly(!isMinimizedBlockly)}
+                      sx={{ color: theme.palette.primary?.main || '#0288d1' }}
+                    >
+                      {isMinimizedBlockly ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+                    </IconButton>
+                  </Box>
+                  {!isMinimizedBlockly && (
+                    <div
+                      ref={blocklyDiv}
+                      style={{
+                        flex: 1,
+                        width: '200%',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        backgroundColor: '#f9fafb',
+                      }}
+                    />
+                  )}
+                </Box>
+
+                <Box sx={{ width: isMinimizedWorkspace ? '10%' : isMinimizedBlockly ? '90%' : '50%', display: 'flex', flexDirection: 'column', gap: 3 }}>
                   <Box
                     sx={{
-                      bgcolor: "#fff",
-                      borderRadius: 3,
-                      boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
-                      p: 3,
-                      flex: "0 0 auto",
-                      maxHeight: "30%",
-                      overflowY: "auto",
+                      bgcolor: '#fff',
+                      borderRadius: 12,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                      p: isStoreMinimized ? 1 : tabValue === null ? 2 : 3,
+                      flex: isStoreMinimized ? '0 0 48px' : tabValue === null ? '0 0 80px' : '0 0 40%',
+                      overflowY: 'auto',
+                      transition: 'all 0.3s ease-in-out',
                     }}
                   >
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        mb: 2,
-                      }}
-                    >
-                      <Typography
-                        variant="h6"
-                        sx={{ color: "#0288d1", fontWeight: 500 }}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isStoreMinimized ? 0 : 0.5 }}>
+                      
+                      <IconButton
+                        onClick={toggleStoreMinimize}
+                        sx={{
+                          color: theme.palette.primary?.main || '#0288d1',
+                          bgcolor: isStoreMinimized ? 'rgba(2,136,209,0.05)' : 'transparent',
+                        }}
                       >
-                        Components Store
-                      </Typography>
-                      <IconButton onClick={() => setIsMinimized(true)}>
-                        <MinimizeIcon />
+                        {isStoreMinimized ? <ExpandMoreIcon /> : <ExpandLessIcon />}
                       </IconButton>
                     </Box>
-                    <Tabs value={tabValue} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-                      <Tab label="Bridge" />
-                      <Tab label="LEDs" />
-                      <Tab label="Display" />
-                      <Tab label="Sensors" />
-                      <Tab label="Sound" />
-                      <Tab label="Motor Driver" />
-                      <Tab label="Joystick" />
-                      <Tab label="Other" />
-                    </Tabs>
-                    <Box sx={{ p: 2 }}>
-                      <Grid container spacing={2}>
-                        {Object.keys(categories).map((category, index) => (
-                          tabValue === index &&
-                          componentsList
-                            .filter((comp) => categories[category].includes(comp.type))
-                            .map((comp) => (
-                              <Grid item xs={4} key={comp.id}>
-                                <DraggableComponent
-                                  id={comp.id}
-                                  name={comp.name}
-                                  type={comp.type}
-                                  image={comp.image}
-                                  defaultPin={comp.defaultPin}
-                                  onAddComponent={(id, name, type, image) =>
-                                    handleAddComponent(id, name, type, image, comp.defaultPin)
-                                  }
-                                />
-                              </Grid>
-                            ))
-                        ))}
-                      </Grid>
-                    </Box>
+                    {!isStoreMinimized && (
+                      <>
+                        <Tabs
+                          value={tabValue}
+                          onChange={handleTabChange}
+                          
+                         
+                          sx={{ mb: tabValue === null ? 0 : 2 }}
+                        >
+                          <Tab label="Bridge" />
+                          <Tab label="LEDs" />
+                          <Tab label="Display" />
+                          {/* <Tab label="Sensors" /> */}
+                          <Tab label="Sound" />
+                          <Tab label="Motor Driver" />
+                          <Tab label="Joystick" />
+                          <Tab label="Other" />
+                        </Tabs>
+                        {tabValue !== null && (
+                          <Box sx={{ p: 2 }}>
+                            <Grid container spacing={2}>
+                              {Object.keys(categories).map((category, index) => (
+                                tabValue === index &&
+                                componentsList
+                                  .filter((comp) => categories[category].includes(comp.type))
+                                  .map((comp) => (
+                                    <Grid item xs={4} key={comp.id}>
+                                      <DraggableComponent
+                                        id={comp.id}
+                                        name={comp.name}
+                                        type={comp.type}
+                                        image={comp.image}
+                                        defaultPin={comp.defaultPin}
+                                        onAddComponent={(id, name, type, image) =>
+                                          handleAddComponent(id, name, type, image, comp.defaultPin)
+                                        }
+                                      />
+                                    </Grid>
+                                  ))
+                              ))}
+                            </Grid>
+                          </Box>
+                        )}
+                      </>
+                    )}
                   </Box>
 
                   <Box
                     sx={{
-                      bgcolor: "#fff",
-                      borderRadius: 3,
-                      boxShadow: "0 8px 30px rgba(0,0,0,0.1)",
-                      p: 3,
+                      bgcolor: '#fff',
+                      borderRadius: 12,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                      p: isMinimizedWorkspace ? 1 : 3,
                       flex: 1,
+                      transition: 'all 0.3s ease-in-out',
+                      display: 'flex',
+                      flexDirection: 'column',
                     }}
                   >
-                    <Typography
-                      variant="h6"
-                      sx={{ mb: 2, color: "#0288d1", fontWeight: 500 }}
-                    >
-                      Workspace
-                    </Typography>
-                    <Workspace
-                      components={components}
-                      setComponents={setComponents}
-                      wires={wires}
-                      setWires={setWires}
-                    />
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMinimizedWorkspace ? 0 : 2 }}>
+                      <Typography variant="h6" sx={{ color: theme.palette.primary?.main || '#0288d1', fontWeight: 600 }}>
+                        Workspace
+                      </Typography>
+                      <IconButton
+                        onClick={() => setIsMinimizedWorkspace(!isMinimizedWorkspace)}
+                        sx={{ color: theme.palette.primary?.main || '#0288d1' }}
+                      >
+                        {isMinimizedWorkspace ? <ExpandMoreIcon /> : <ExpandLessIcon />}
+                      </IconButton>
+                    </Box>
+                    {!isMinimizedWorkspace && (
+                      <Workspace
+                        components={components}
+                        setComponents={setComponents}
+                        wires={wires}
+                        setWires={setWires}
+                        addWire={addWire}
+                        sx={{ flex: 1 }}
+                      />
+                    )}
                   </Box>
                 </Box>
-              )}
-
-              {isMinimized && (
-                <IconButton
-                  onClick={() => setIsMinimized(false)}
-                  sx={{ position: "absolute", right: 20, top: 80 }}
-                >
-                  <MaximizeIcon />
-                </IconButton>
-              )}
-            </Box>
-
-            <Dialog open={openSessionsDialog} onClose={() => setOpenSessionsDialog(false)}>
-              <DialogTitle>Load Session</DialogTitle>
-              <DialogContent>
-                <List>
-                  {sessions.map((session) => (
-                    <ListItem
-                      button
-                      key={session.id}
-                      onClick={() => loadSession(session.id)}
-                    >
-                      <ListItemText primary={session.name} />
-                    </ListItem>
-                  ))}
-                </List>
-              </DialogContent>
-            </Dialog>
-
-            <Snackbar
-              open={snackbarOpen}
-              autoHideDuration={3000}
-              onClose={() => setSnackbarOpen(false)}
-            >
-              <Alert severity="success" onClose={() => setSnackbarOpen(false)}>
-                Action completed successfully!
-              </Alert>
-            </Snackbar>
-
-            <Box sx={{ mt: 4, bgcolor: "#fff", borderRadius: 3, p: 3 }}>
-              <Typography variant="h6" sx={{ mb: 2, color: "#0288d1" }}>
-                Output Log
-              </Typography>
-              <Box sx={{ maxHeight: 200, overflowY: "auto" }}>
-                {outputLog.map((log, index) => (
-                  <Typography key={index} variant="body2">
-                    {log}
-                  </Typography>
-                ))}
               </Box>
-            </Box>
-          </Container>
-        </Box>
-      </DndProvider>
-    </ThemeProvider>
+
+              <Dialog
+                open={openSessionsDialog}
+                onClose={() => setOpenSessionsDialog(false)}
+                PaperProps={{ sx: { borderRadius: 12 } }}
+              >
+                <DialogTitle sx={{ fontWeight: 600, color: theme.palette.primary?.main || '#0288d1' }}>
+                  Load Session
+                </DialogTitle>
+                <DialogContent>
+                  <List>
+                    {sessions.map((session) => (
+                      <ListItem
+                        button
+                        key={session.id}
+                        onClick={() => loadSession(session.id)}
+                        sx={{
+                          borderRadius: 8,
+                          '&:hover': { bgcolor: 'rgba(2,136,209,0.05)' },
+                        }}
+                      >
+                        <ListItemText primary={session.name} />
+                      </ListItem>
+                    ))}
+                  </List>
+                </DialogContent>
+              </Dialog>
+
+              <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={3000}
+                onClose={() => setSnackbarOpen(false)}
+              >
+                <Alert
+                  severity="success"
+                  onClose={() => setSnackbarOpen(false)}
+                  sx={{ borderRadius: 8, bgcolor: '#e3f2fd', color: '#0288d1' }}
+                >
+                  Action completed successfully!
+                </Alert>
+              </Snackbar>
+
+              <Box
+                sx={{
+                  mt: 4,
+                  bgcolor: '#fff',
+                  borderRadius: 12,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  p: 3,
+                }}
+              >
+                <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary?.main || '#0288d1', fontWeight: 600 }}>
+                  Output Log
+                </Typography>
+                <Box sx={{ maxHeight: 200, overflowY: 'auto', bgcolor: '#f9fafb', p: 2, borderRadius: 8 }}>
+                  {outputLog.map((log, index) => (
+                    <Typography key={index} variant="body2" sx={{ mb: 1, color: '#374151' }}>
+                      {log}
+                    </Typography>
+                  ))}
+                </Box>
+              </Box>
+            </Container>
+          </Box>
+        </DndProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 };
 
