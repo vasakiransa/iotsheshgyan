@@ -80,7 +80,6 @@ const pinConfigurations = {
     ,
   },
 };
-<<<<<<< HEAD
 
 // Normalize pin names to ensure consistency (e.g., C11 -> C011)
 const normalizePin = (pin) => {
@@ -141,68 +140,6 @@ const Workspace = ({ components, setComponents, wires, setWires, addWire }) => {
     setDraggingWire(null);
   }, []);
 
-=======
-
-// Normalize pin names to ensure consistency (e.g., C11 -> C011)
-const normalizePin = (pin) => {
-  if (!pin) return pin;
-  return pin.replace(/^C(\d{1,2})$/, (match, num) => `C${num.padStart(3, "0")}`);
-};
-
-const Workspace = ({ components, setComponents, wires, setWires, addWire }) => {
-  const [draggingWire, setDraggingWire] = useState(null);
-  const workspaceRef = useRef(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [selectedComponentId, setSelectedComponentId] = useState(null);
-  const [isMounted, setIsMounted] = useState(false);
-  const controls = useAnimation();
-
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: "component",
-    drop: (item, monitor) => {
-      const { id, name, type, image } = item;
-      const pins = pinConfigurations[type] || { left: [], right: [] };
-      const offset = monitor.getClientOffset();
-      const workspaceRect = workspaceRef.current.getBoundingClientRect();
-
-      const newComponent = {
-        id: `${id}-${Date.now()}`,
-        name,
-        type,
-        image,
-        x: offset.x - workspaceRect.left - 65,
-        y: offset.y - workspaceRect.top - 65,
-        pins: [...pins.left, ...pins.right],
-        connectedPins: [],
-        state: null,
-        value: type === "sevensegment" ? 0 : null,
-        angle: type === "pantilt" ? { pan: 0, tilt: 0 } : null,
-        speed: type === "motor" ? 0 : null,
-        direction: type === "motor" ? "forward" : null,
-        displayText: type === "oled" ? "" : null,
-        shapes: type === "oled" ? [] : null,
-        xValue: type === "joystick" ? 0 : null,
-        yValue: type === "joystick" ? 0 : null,
-        r: type === "led" ? 0 : null,
-        g: type === "led" ? 0 : null,
-        b: type === "led" ? 0 : null,
-      };
-
-      setComponents((prev) => [...prev, newComponent]);
-      console.log(`Added component: ${newComponent.id} (${type})`, newComponent);
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  }));
-
-  useEffect(() => {
-    setIsMounted(true);
-    setDraggingWire(null);
-  }, []);
-
->>>>>>> ef72941 (latest changes)
   const getPinPosition = (component, pinName) => {
     const pin = (component.pins || []).find((p) => normalizePin(p.name) === normalizePin(pinName));
     if (!pin) {
