@@ -206,3 +206,191 @@
 .workspace {
   min-height: 400px;
 }
+
+/* App.css */
+.motor-component {
+  transition: transform 0.2s ease;
+}
+
+.motor-component.rotating {
+  animation: rotateMotor 1s linear infinite;
+}
+
+@keyframes rotateMotor {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* App.css */
+.component {
+  transition: transform 0.2s ease;
+}
+
+.motor-component.rotating,
+.servo-component.rotating {
+  animation: rotateMotor 1s linear infinite;
+}
+
+@keyframes rotateMotor {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+.led-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+.led-off {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #ccc;
+}
+.smartlight-vibgyor, .smartlight-on {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+.sevensegment-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  font-family: 'Segment7Standard', monospace;
+  text-align: center;
+  color: #ff0000;
+  background-color: #1a1a1a;
+  width: 50px;
+  height: 60px;
+  line-height: 60px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+.sevensegment-off {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 36px;
+  font-family: 'Segment7Standard', monospace;
+  text-align: center;
+  color: #4d0000;
+  background-color: #1a1a1a;
+  width: 50px;
+  height: 60px;
+  line-height: 60px;
+  border-radius: 6px;
+}
+.buzzer-playing {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  font-size: 12px;
+  text-align: center;
+  color: #333;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 2px;
+  border-radius: 4px;
+}
+.motor-spinning {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+}
+.motor-info {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  font-size: 12px;
+  text-align: center;
+  color: #333;
+  background-color: rgba(255, 255, 255, 0.8);
+  padding: 2px;
+  border-radius: 4px;
+}
+.pantilt-rotating, .pantilt-off {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+}
+.oled-display {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 60px;
+  background-color: #000;
+  color: #0f0;
+  font-size: 14px;
+  font-family: monospace;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  padding: 5px;
+  word-break: break-all;
+}
+.oled-off {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 60px;
+  background-color: #333;
+  color: #666;
+  font-size: 14px;
+  font-family: monospace;
+  text-align: center;
+  line-height: 60px;
+  border: 2px solid #666;
+  border-radius: 6px;
+}
+.component-remove {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 20px;
+  height: 20px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 20px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.component-selected {
+  border: 2px solid #0288d1;
+}

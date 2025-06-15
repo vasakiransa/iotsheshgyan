@@ -14,39 +14,37 @@ const DraggableComponent = ({ id, name, type, image, onAddComponent }) => {
     <div
       ref={drag}
       style={{
-        opacity: isDragging ? 0.9 : 1,
-        width: '180px',
-        padding: '16px',
-        margin: '8px',
-        backgroundColor: '#ffffff',
+        opacity: isDragging ? 0.8 : 1,
+        width: '200px',
+        padding: '20px',
+        margin: '10px',
+        background: 'linear-gradient(135deg, #ffffff, #f9f9f9)',
         border: '1px solid #e0e0e0',
-        borderRadius: '12px',
+        borderRadius: '16px',
         cursor: isDragging ? 'grabbing' : 'grab',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         boxShadow: isDragging
-          ? '0 8px 16px rgba(0, 0, 0, 0.15)'
-          : '0 4px 8px rgba(0, 0, 0, 0.1)',
-        // Use transform GPU acceleration for smoother dragging
-        transform: isDragging ? 'translateY(-4px) scale(1.05)' : 'translateY(0) scale(1)',
-        // Optimized transition for dragging
-        transition: 'transform 0.15s ease-out, opacity 0.1s ease-out, box-shadow 0.2s ease-out',
-        willChange: 'transform, opacity', // Hint to browser for optimization
-        // Remove pseudo-class styles from inline style (use CSS instead if needed)
+          ? '0 10px 24px rgba(0, 0, 0, 0.15)'
+          : '0 6px 12px rgba(0, 0, 0, 0.08)',
+        transform: isDragging ? 'translateY(-5px) scale(1.05)' : 'translateY(0) scale(1)',
+        transition: 'all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)',
+        willChange: 'transform, opacity',
+        userSelect: 'none',
       }}
       onClick={() => onAddComponent(id, name, type, image)}
     >
       <div
         style={{
-          width: '60px',
-          height: '60px',
+          width: '72px',
+          height: '72px',
           borderRadius: '50%',
           overflow: 'hidden',
-          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-          marginBottom: '10px',
-          // Remove hover transition here to avoid interference with dragging
-          transform: 'translateZ(0)', // GPU acceleration
+          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+          marginBottom: '12px',
+          backgroundColor: '#f0f0f0',
+          transition: 'transform 0.3s ease',
         }}
       >
         <img
@@ -57,7 +55,6 @@ const DraggableComponent = ({ id, name, type, image, onAddComponent }) => {
             height: '100%',
             objectFit: 'cover',
             display: 'block',
-            transform: 'translateZ(0)', // GPU acceleration
           }}
         />
       </div>
@@ -65,49 +62,26 @@ const DraggableComponent = ({ id, name, type, image, onAddComponent }) => {
       <h4
         style={{
           margin: 0,
-          fontSize: '1rem',
+          fontSize: '1.1rem',
           fontWeight: 600,
-          color: '#333',
+          color: '#222',
           textAlign: 'center',
-          lineHeight: '1.2',
+          lineHeight: '1.3',
         }}
       >
         {name}
       </h4>
       <p
         style={{
-          marginTop: '4px',
-          fontSize: '0.8rem',
-          color: '#777',
+          marginTop: '6px',
+          fontSize: '0.85rem',
+          color: '#888',
           textAlign: 'center',
+          fontStyle: 'italic',
         }}
       >
         {type}
       </p>
-
-      <button
-        style={{
-          backgroundColor: '#5a67d8',
-          color: '#ffffff',
-          border: 'none',
-          borderRadius: '8px',
-          width: '100%',
-          padding: '8px',
-          marginTop: '10px',
-          cursor: 'pointer',
-          fontSize: '0.9rem',
-          fontWeight: 500,
-          boxShadow: '0 2px 4px rgba(0, 0, 0, 0.15)',
-          transition: 'background-color 0.2s ease-out, transform 0.15s ease-out',
-          transform: 'translateZ(0)', // GPU acceleration
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onAddComponent(id, name, type, image);
-        }}
-      >
-        Add +
-      </button>
     </div>
   );
 };
