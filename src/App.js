@@ -25,6 +25,8 @@ import {
   Tabs,
   Tab,
   Grid,
+  Tooltip,
+  Chip,
 } from "@mui/material";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import MinimizeIcon from "@mui/icons-material/Minimize";
@@ -48,6 +50,10 @@ import smartLightLedImage from "./assets/smart.png";
 
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import FullscreenIcon from "@mui/icons-material/Fullscreen";
+import FullscreenExitIcon from "@mui/icons-material/FullscreenExit";
+import MemoryIcon from "@mui/icons-material/Memory";
+import KeyboardIcon from "@mui/icons-material/Keyboard";
 import "./App.css";
 
 class ErrorBoundary extends React.Component {
@@ -67,54 +73,83 @@ class ErrorBoundary extends React.Component {
 const theme = createTheme({
   palette: {
     mode: "light",
-    primary: { main: "#0288d1" },
-    secondary: { main: "#d81b60" },
-    background: { default: "#e3f2fd" },
+    primary: { main: "#1565c0", light: "#42a5f5", dark: "#0d47a1" },
+    secondary: { main: "#00bcd4" },
+    success: { main: "#2e7d32" },
+    warning: { main: "#ed6c02" },
+    background: { default: "#eef2f7", paper: "#ffffff" },
+    text: { primary: "#1a2b3c", secondary: "#5a6b7b" },
   },
+  shape: { borderRadius: 12 },
   typography: {
-    fontFamily: "'Poppins', sans-serif",
+    fontFamily: "'Poppins', 'Segoe UI', sans-serif",
+    h5: { fontWeight: 700, letterSpacing: 0.3 },
+    h6: { fontWeight: 600 },
+    button: { fontWeight: 600 },
+    subtitle2: { fontWeight: 600, letterSpacing: 0.4 },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 25,
+          borderRadius: 10,
           textTransform: "none",
-          padding: "12px 24px",
-          boxShadow: "0 4px 14px rgba(2, 136, 209, 0.3)",
-          "&:hover": { boxShadow: "0 6px 20px rgba(2, 136, 209, 0.5)" },
+          padding: "8px 18px",
+          fontWeight: 600,
+          boxShadow: "none",
+          transition: "all 0.2s ease",
+          "&:hover": { transform: "translateY(-1px)" },
         },
+        contained: {
+          boxShadow: "0 4px 14px rgba(21, 101, 192, 0.25)",
+          "&:hover": { boxShadow: "0 6px 20px rgba(21, 101, 192, 0.4)" },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        rounded: { borderRadius: 16 },
       },
     },
     MuiAppBar: {
       styleOverrides: {
         root: {
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.1)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.2)",
+          boxShadow: "0 2px 16px rgba(13, 71, 161, 0.18)",
         },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: { transition: "background-color 0.2s ease, transform 0.2s ease" },
       },
     },
     MuiTabs: {
       styleOverrides: {
         root: {
-          minHeight: "40px",
-          backgroundColor: "#e3f2fd",
-          borderRadius: "8px 8px 0 0",
+          minHeight: "42px",
         },
+        indicator: { height: 3, borderRadius: 3 },
       },
     },
     MuiTab: {
       styleOverrides: {
         root: {
-          minHeight: "40px",
+          minHeight: "42px",
           textTransform: "none",
-          fontWeight: 500,
-          color: "#0288d1",
-          "&.Mui-selected": {
-            color: "#fff",
-            backgroundColor: "#0288d1",
-            borderRadius: "8px 8px 0 0",
-          },
+          fontWeight: 600,
+          fontSize: "0.82rem",
+          color: "#5a6b7b",
+          "&.Mui-selected": { color: "#1565c0" },
+        },
+      },
+    },
+    MuiTooltip: {
+      styleOverrides: {
+        tooltip: {
+          backgroundColor: "#1a2b3c",
+          fontSize: "0.72rem",
+          borderRadius: 6,
+          padding: "6px 10px",
         },
       },
     },
@@ -136,11 +171,13 @@ const IoTSimulator = () => {
   const blocklyDiv = useRef(null);
   const workspaceRef = useRef(null);
   const audioContextRef = useRef(null);
+  const appRootRef = useRef(null);
 
   // Panel collapse states. Only ONE of blockly/workspace may be minimized at a time.
   const [isStoreMinimized, setIsStoreMinimized] = useState(true); // Start minimized
   const [isMinimizedBlockly, setIsMinimizedBlockly] = useState(false);
   const [isMinimizedWorkspace, setIsMinimizedWorkspace] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const esp32Pins = [
     "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12",
@@ -1345,6 +1382,24 @@ const IoTSimulator = () => {
     });
   };
 
+  // ---- Fullscreen (real browser fullscreen: no taskbar, ESC to exit) ----
+  const toggleFullscreen = () => {
+    const el = appRootRef.current;
+    if (!el) return;
+    const fsEl =
+      document.fullscreenElement || document.webkitFullscreenElement;
+    if (!fsEl) {
+      const req =
+        el.requestFullscreen ||
+        el.webkitRequestFullscreen ||
+        el.msRequestFullscreen;
+      if (req) req.call(el).catch(() => {});
+    } else {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen;
+      if (exit) exit.call(document).catch(() => {});
+    }
+  };
+
   const handleAddComponent = (id, name, type, image, defaultPin) => {
     setComponents((prev) => [
       ...prev,
@@ -2542,6 +2597,26 @@ const IoTSimulator = () => {
     return () => ro.disconnect();
   }, []);
 
+  // --- Keep fullscreen state in sync (handles native ESC exit) + re-fit Blockly ---
+  useEffect(() => {
+    const onFsChange = () => {
+      const active = !!(
+        document.fullscreenElement || document.webkitFullscreenElement
+      );
+      setIsFullscreen(active);
+      // Blockly needs an explicit resize after the viewport changes
+      window.setTimeout(() => {
+        if (workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+      }, 150);
+    };
+    document.addEventListener("fullscreenchange", onFsChange);
+    document.addEventListener("webkitfullscreenchange", onFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFsChange);
+      document.removeEventListener("webkitfullscreenchange", onFsChange);
+    };
+  }, []);
+
   const runCode = async () => {
     setOutputLog([]);
     const code = generatedCode;
@@ -2602,42 +2677,119 @@ const IoTSimulator = () => {
         <CssBaseline />
         <DndProvider backend={HTML5Backend}>
           <Box
+            ref={appRootRef}
             sx={{
               minHeight: "100vh",
-              background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+              background: isFullscreen
+                ? "#eef2f7"
+                : "linear-gradient(135deg, #eef2f7 0%, #d7e6f5 100%)",
+              ...(isFullscreen && {
+                height: "100vh",
+                overflow: "auto",
+              }),
             }}
           >
             <AppBar
-              position="static"
+              position="sticky"
               sx={{
-                background: "linear-gradient(to right, #0288d1, #4fc3f7)",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                background:
+                  "linear-gradient(110deg, #0d47a1 0%, #1565c0 55%, #1e88e5 100%)",
               }}
             >
-              <Toolbar>
-                <Typography
-                  variant="h5"
-                  sx={{ flexGrow: 1, fontWeight: 700, letterSpacing: 0.5 }}
+              <Toolbar sx={{ gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: "rgba(255,255,255,0.16)",
+                    mr: 1.5,
+                  }}
                 >
-                  Sheshgyan Simulator
-                </Typography>
+                  <MemoryIcon sx={{ color: "#fff" }} />
+                </Box>
+                <Box sx={{ flexGrow: 1, lineHeight: 1 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
+                    Sheshgyan Simulator
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "rgba(255,255,255,0.7)", letterSpacing: 0.4 }}
+                  >
+                    Visual IoT hardware playground
+                  </Typography>
+                </Box>
+
                 <Button
-                  color="inherit"
+                  variant="contained"
+                  color="success"
                   onClick={runCode}
                   startIcon={<PlayArrowIcon />}
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.15)",
-                    "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
-                    px: 2,
-                  }}
+                  sx={{ px: 2.5, mr: 0.5 }}
                 >
                   Run Code
                 </Button>
+
+                <Tooltip
+                  title={
+                    isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen mode"
+                  }
+                >
+                  <IconButton
+                    onClick={toggleFullscreen}
+                    sx={{
+                      color: "#fff",
+                      bgcolor: "rgba(255,255,255,0.12)",
+                      "&:hover": { bgcolor: "rgba(255,255,255,0.24)" },
+                    }}
+                  >
+                    {isFullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
+                  </IconButton>
+                </Tooltip>
               </Toolbar>
             </AppBar>
 
-            <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: { xs: 2, md: 4 } }}>
-              <Box sx={{ display: "flex", gap: 3, height: "80vh" }}>
+            {/* Floating exit hint while in fullscreen */}
+            {isFullscreen && (
+              <Chip
+                icon={<KeyboardIcon sx={{ color: "#fff !important" }} />}
+                label="Press Esc or click to exit"
+                onClick={toggleFullscreen}
+                deleteIcon={<FullscreenExitIcon />}
+                onDelete={toggleFullscreen}
+                sx={{
+                  position: "fixed",
+                  top: 12,
+                  right: 16,
+                  zIndex: 2000,
+                  color: "#fff",
+                  bgcolor: "rgba(13,71,161,0.85)",
+                  backdropFilter: "blur(4px)",
+                  fontWeight: 600,
+                  "& .MuiChip-deleteIcon": { color: "rgba(255,255,255,0.85)" },
+                  "&:hover": { bgcolor: "rgba(13,71,161,0.95)" },
+                }}
+              />
+            )}
+
+            <Container
+              maxWidth={false}
+              sx={{
+                mt: isFullscreen ? 2 : 3,
+                mb: isFullscreen ? 2 : 3,
+                px: { xs: 1.5, md: 3 },
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  gap: 2.5,
+                  height: isFullscreen ? "calc(100vh - 90px)" : "82vh",
+                }}
+              >
                 {/* ---------- Blockly panel ---------- */}
                 <Box
                   sx={{
