@@ -69,14 +69,14 @@ const pinConfigurations = {
   },
   smartlightcomponent: {
     left: [
-      
+
       { name: "GND", x: 0, y: 50 * 2 },
     ],
     right: [{ name: "C012", x: 130 * 2, y: 50 * 2 },
       { name: "C013", x: 130 * 2, y: 50 * 3 }
     ]
-    
-    
+
+
     ,
   },
 };
@@ -1460,7 +1460,7 @@ const Workspace = ({ components, setComponents, wires, setWires, addWire }) => {
     </motion.svg>
   );
 
-          
+
       case "oled":
         return (
           <motion.svg
