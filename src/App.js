@@ -46,9 +46,10 @@ import panTiltImage from "./assets/panandtilt.png";
 import smartLightComponentImage from "./assets/smartlight.jpeg"; // New image for SmartLightComponent
 import smartLightLedImage from "./assets/smart.png";
 
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import "./App.css";
+
 class ErrorBoundary extends React.Component {
   state = { error: null };
   static getDerivedStateFromError(error) {
@@ -56,12 +57,13 @@ class ErrorBoundary extends React.Component {
   }
   render() {
     if (this.state.error) {
-      console.error('ErrorBoundary caught:', this.state.error);
+      console.error("ErrorBoundary caught:", this.state.error);
       return <div>Error: {this.state.error.message}</div>;
     }
     return this.props.children;
   }
 }
+
 const theme = createTheme({
   palette: {
     mode: "light",
@@ -125,7 +127,6 @@ const IoTSimulator = () => {
   const [generatedCode, setGeneratedCode] = useState("");
   const [outputLog, setOutputLog] = useState([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [sessions, setSessions] = useState(() => {
     const saved = localStorage.getItem("iotSimulatorSessions");
@@ -135,15 +136,14 @@ const IoTSimulator = () => {
   const blocklyDiv = useRef(null);
   const workspaceRef = useRef(null);
   const audioContextRef = useRef(null);
+
+  // Panel collapse states. Only ONE of blockly/workspace may be minimized at a time.
   const [isStoreMinimized, setIsStoreMinimized] = useState(true); // Start minimized
-  const [previousTabValue, setPreviousTabValue] = useState(null); // Store previous tab
-  
-  const [isMinimizedStore, setIsMinimizedStore] = useState(true);
   const [isMinimizedBlockly, setIsMinimizedBlockly] = useState(false);
   const [isMinimizedWorkspace, setIsMinimizedWorkspace] = useState(false);
 
   const esp32Pins = [
-    "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12"
+    "C01", "C02", "C03", "C04", "C05", "C06", "C07", "C08", "C09", "C10", "C11", "C12",
   ];
   const rgbLedPins = ["C011", "C012", "C013"];
   const sensorPins = ["C08", "VCC", "GND"];
@@ -179,10 +179,10 @@ const IoTSimulator = () => {
     { id: 14, name: "SmartLightComponent", type: "smartlightcomponent", image: smartLightComponentImage, category: "LED", defaultPin: "C001" },
     { id: 15, name: "SmartLightLED", type: "smartlightled", image: smartLightLedImage, category: "LED", defaultPin: "C001" },
   ];
-  
+
   const categories = {
     Bridge: ["bridge"],
-    LED: ["led", "smartlightcomponent","smartlightled"],
+    LED: ["led", "smartlightcomponent", "smartlightled"],
     Display: ["sevensegment", "oled"],
     Sensor: ["sensor"],
     Sound: ["buzzer"],
@@ -266,6 +266,7 @@ const IoTSimulator = () => {
     console.warn(`No ${componentType} found for pin ${bridgePin}`);
     return null;
   };
+
   const activateSMARTLIGHT = (pin) => {
     console.log(`Activating SMARTLIGHT on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Smart Light on pin ${pin}: Activated`]);
@@ -321,118 +322,111 @@ const IoTSimulator = () => {
     checkConnection();
   };
 
-     // Smart Light VIBGYOR Block
-Blockly.Blocks["smartlight_vibgyor"] = {
-  init: function () {
-    this.appendDummyInput().appendField("Smart Light VIBGYOR");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(180);
-    this.setTooltip("Displays VIBGYOR colors on Smart Light");
-  },
-};
-javascriptGenerator["smartlight_vibgyor"] = function (block) {
-  return `smartLightVibgyor("c001");\n`;
-};
-
-// SmartLightLED Colour Seconds Block
-Blockly.Blocks["smartlightled_colour_seconds"] = {
-  init: function () {
-    this.appendDummyInput()
-      .appendField("SmartLightLED")
-      .appendField(new Blockly.FieldDropdown([
-        ["LED1", "LED1"], ["LED2", "LED2"]
-      ]), "LED");
-    this.appendDummyInput()
-      .appendField("Colour")
-      .appendField(new Blockly.FieldDropdown([
-        ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"]
-      ]), "COLOUR");
-    this.appendValueInput("SECONDS").setCheck("Number").appendField("for");
-    this.appendDummyInput().appendField("seconds");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(180);
-    this.setTooltip("Set SmartLightLED to a colour for a specified duration");
-  },
-};
-javascriptGenerator["smartlightled_colour_seconds"] = function (block) {
-  const led = block.getFieldValue("LED");
-  const colour = block.getFieldValue("COLOUR");
-  const seconds = javascriptGenerator.valueToCode(block, "SECONDS", javascriptGenerator.ORDER_ATOMIC) || "0";
-  return `setSmartLightLedColourSeconds("${led}", "${colour}", ${seconds}, "c001");\n`;
-};
-
-// SmartLightLED Colour Power Dropdown Block
-Blockly.Blocks["smartlightled_colour_power"] = {
-  init: function () {
-    this.appendDummyInput()
-      .appendField("SmartLightLED")
-      .appendField(new Blockly.FieldDropdown([
-        ["LED1", "LED1"], ["LED2", "LED2"], ["LED3", "LED3"],
-        ["LED4", "LED4"], ["LED5", "LED5"], ["LED6", "LED6"], ["LED7", "LED7"]
-      ]), "LEDLEVEL");
-    this.appendDummyInput()
-      .appendField("Colour")
-      .appendField(new Blockly.FieldDropdown([
-        ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"]
-      ]), "COLOUR");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(180);
-    this.setTooltip("Set SmartLightLED colour and brightness based on LED level (1-7)");
-  },
-};
-javascriptGenerator["smartlightled_colour_power"] = function (block) {
-  const ledLevel = block.getFieldValue("LEDLEVEL");
-  const colour = block.getFieldValue("COLOUR");
-
-  // Map LED level to brightness percentage
-  const brightnessMap = {
-    LED1: 20,
-    LED2: 35,
-    LED3: 50,
-    LED4: 65,
-    LED5: 80,
-    LED6: 90,
-    LED7: 100
+  // Smart Light VIBGYOR Block
+  Blockly.Blocks["smartlight_vibgyor"] = {
+    init: function () {
+      this.appendDummyInput().appendField("Smart Light VIBGYOR");
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(180);
+      this.setTooltip("Displays VIBGYOR colors on Smart Light");
+    },
   };
-  const power = brightnessMap[ledLevel];
+  javascriptGenerator["smartlight_vibgyor"] = function (block) {
+    return `smartLightVibgyor("c001");\n`;
+  };
 
-  return `setSmartLightLedColourPower("${ledLevel}", "${colour}", ${power}, "c001");\n`;
-};
+  // SmartLightLED Colour Seconds Block
+  Blockly.Blocks["smartlightled_colour_seconds"] = {
+    init: function () {
+      this.appendDummyInput()
+        .appendField("SmartLightLED")
+        .appendField(new Blockly.FieldDropdown([["LED1", "LED1"], ["LED2", "LED2"]]), "LED");
+      this.appendDummyInput()
+        .appendField("Colour")
+        .appendField(new Blockly.FieldDropdown([
+          ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"],
+        ]), "COLOUR");
+      this.appendValueInput("SECONDS").setCheck("Number").appendField("for");
+      this.appendDummyInput().appendField("seconds");
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(180);
+      this.setTooltip("Set SmartLightLED to a colour for a specified duration");
+    },
+  };
+  javascriptGenerator["smartlightled_colour_seconds"] = function (block) {
+    const led = block.getFieldValue("LED");
+    const colour = block.getFieldValue("COLOUR");
+    const seconds = javascriptGenerator.valueToCode(block, "SECONDS", javascriptGenerator.ORDER_ATOMIC) || "0";
+    return `setSmartLightLedColourSeconds("${led}", "${colour}", ${seconds}, "c001");\n`;
+  };
 
+  // SmartLightLED Colour Power Dropdown Block
+  Blockly.Blocks["smartlightled_colour_power"] = {
+    init: function () {
+      this.appendDummyInput()
+        .appendField("SmartLightLED")
+        .appendField(new Blockly.FieldDropdown([
+          ["LED1", "LED1"], ["LED2", "LED2"], ["LED3", "LED3"],
+          ["LED4", "LED4"], ["LED5", "LED5"], ["LED6", "LED6"], ["LED7", "LED7"],
+        ]), "LEDLEVEL");
+      this.appendDummyInput()
+        .appendField("Colour")
+        .appendField(new Blockly.FieldDropdown([
+          ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"],
+        ]), "COLOUR");
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(180);
+      this.setTooltip("Set SmartLightLED colour and brightness based on LED level (1-7)");
+    },
+  };
+  javascriptGenerator["smartlightled_colour_power"] = function (block) {
+    const ledLevel = block.getFieldValue("LEDLEVEL");
+    const colour = block.getFieldValue("COLOUR");
 
-// SmartLightLED Dropdown Colour Dropdown Power Dropdown Block
-Blockly.Blocks["smartlightled_dropdown_colour_power"] = {
-  init: function () {
-    this.appendDummyInput()
-      .appendField("SmartLightLED")
-      .appendField(new Blockly.FieldDropdown([
-        ["LED1", "LED1"], ["LED2", "LED2"]
-      ]), "LED");
-    this.appendDummyInput()
-      .appendField("Colour")
-      .appendField(new Blockly.FieldDropdown([
-        ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"]
-      ]), "COLOUR");
-    this.appendDummyInput()
-      .appendField("Power")
-      .appendField(new Blockly.FieldDropdown([
-        ["ON", "100"], ["OFF", "0"]
-      ]), "POWER");
-    this.setPreviousStatement(true);
-    this.setNextStatement(true);
-    this.setColour(180);
-    this.setTooltip("Set SmartLightLED with dropdown for colour and power");
-  },
-};
-javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
-  const led = block.getFieldValue("LED");
-  const colour = block.getFieldValue("COLOUR");
-  const power = block.getFieldValue("POWER");
-  return `setSmartLightLedDropdownColourPower("${led}", "${colour}", ${power}, "c001");\n`;
-};
+    // Map LED level to brightness percentage
+    const brightnessMap = {
+      LED1: 20,
+      LED2: 35,
+      LED3: 50,
+      LED4: 65,
+      LED5: 80,
+      LED6: 90,
+      LED7: 100,
+    };
+    const power = brightnessMap[ledLevel];
+
+    return `setSmartLightLedColourPower("${ledLevel}", "${colour}", ${power}, "c001");\n`;
+  };
+
+  // SmartLightLED Dropdown Colour Dropdown Power Dropdown Block
+  Blockly.Blocks["smartlightled_dropdown_colour_power"] = {
+    init: function () {
+      this.appendDummyInput()
+        .appendField("SmartLightLED")
+        .appendField(new Blockly.FieldDropdown([["LED1", "LED1"], ["LED2", "LED2"]]), "LED");
+      this.appendDummyInput()
+        .appendField("Colour")
+        .appendField(new Blockly.FieldDropdown([
+          ["Red", "red"], ["Green", "green"], ["Blue", "blue"], ["White", "white"],
+        ]), "COLOUR");
+      this.appendDummyInput()
+        .appendField("Power")
+        .appendField(new Blockly.FieldDropdown([["ON", "100"], ["OFF", "0"]]), "POWER");
+      this.setPreviousStatement(true);
+      this.setNextStatement(true);
+      this.setColour(180);
+      this.setTooltip("Set SmartLightLED with dropdown for colour and power");
+    },
+  };
+  javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
+    const led = block.getFieldValue("LED");
+    const colour = block.getFieldValue("COLOUR");
+    const power = block.getFieldValue("POWER");
+    return `setSmartLightLedDropdownColourPower("${led}", "${colour}", ${power}, "c001");\n`;
+  };
 
   const setSmartLightLed = (led, color, power, pin) => {
     console.log(`Setting Smart Light LED ${led} to color ${color} with power ${power} on pin ${pin}`);
@@ -465,6 +459,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     }
     checkConnection();
   };
+
   const activateBUZZER = (pin) => {
     console.log(`Activating BUZZER on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Buzzer on pin ${pin}: Activated`]);
@@ -525,49 +520,50 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     }
     checkConnection();
   };
-   window.playBuzzerSareGamaPa = async (pin) => {
+
+  window.playBuzzerSareGamaPa = async (pin) => {
     console.log(`Playing Sare Gama Pa on BUZZER on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Buzzer on pin ${pin}: Playing Sare Gama Pa`]);
-  
+
     const notes = [
       { freq: 261.63, duration: 0.3 }, // C4
       { freq: 293.66, duration: 0.3 }, // D4
       { freq: 329.63, duration: 0.3 }, // E4
       { freq: 349.23, duration: 0.3 }, // F4
-      { freq: 392.00, duration: 0.3 }, // G4
-      { freq: 440.00, duration: 0.3 }, // A4
+      { freq: 392.0, duration: 0.3 }, // G4
+      { freq: 440.0, duration: 0.3 }, // A4
       { freq: 493.88, duration: 0.3 }, // B4
       { freq: 523.25, duration: 0.3 }, // C5
     ];
-  
+
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
         setOutputLog((prev) => [...prev, "AudioContext initialized"]);
       }
-  
+
       const audioCtx = audioContextRef.current;
       if (audioCtx.state === "suspended") {
         await audioCtx.resume();
         setOutputLog((prev) => [...prev, "AudioContext resumed"]);
       }
-  
+
       for (const note of notes) {
         const oscillator = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
-  
+
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-  
+
         oscillator.type = "square";
         oscillator.frequency.setValueAtTime(note.freq, audioCtx.currentTime);
         gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-  
+
         oscillator.start();
         await new Promise((resolve) => setTimeout(resolve, note.duration * 1000));
         oscillator.stop();
       }
-  
+
       const component = findComponentByBridgePin(pin, "buzzer");
       if (component) {
         updateComponentState(component.id, { state: "played_music", song: "Sare Gama Pa", pin });
@@ -577,7 +573,6 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     }
     checkConnection();
   };
-  
 
   const playBuzzerHappyBirthday = async (pin) => {
     console.log(`Playing Happy Birthday on BUZZER on pin ${pin}`);
@@ -877,7 +872,6 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     }
     checkConnection();
   };
- 
 
   const controlMotorDriver = (dir1, dir2, speed1, speed2, pin) => {
     console.log(`Calling controlMotorDriver("${dir1}", "${dir2}", ${speed1}, ${speed2}, "${pin}")`);
@@ -918,7 +912,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
 
   const setLedColor = (color, pin) => {
     console.log(`Calling setLedColor("${color}", "${pin}")`);
-  
+
     const colorMap = {
       red: { r: 255, g: 0, b: 0 },
       green: { r: 0, g: 255, b: 0 },
@@ -941,11 +935,11 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
       skyblue: { r: 135, g: 206, b: 235 },
       aliceblue: { r: 240, g: 248, b: 255 },
       gold: { r: 255, g: 215, b: 0 },
-      indigo: { r: 75, g: 0, b: 130 }
+      indigo: { r: 75, g: 0, b: 130 },
     };
-  
+
     const rgb = colorMap[color.toLowerCase()] || { r: 255, g: 255, b: 255 };
-  
+
     setOutputLog((prev) => [...prev, `Tri-Color LED on pin ${pin}: Set to ${color}`]);
     const component = findComponentByBridgePin(pin, "led");
     if (component) {
@@ -964,6 +958,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     }
     checkConnection();
   };
+
   const setLedColorByRGB = (r, g, b, pin) => {
     console.log(`Setting RGB color to R:${r}, G:${g}, B:${b} on pin ${pin}`);
     const component = findComponentByBridgePin(pin, "led");
@@ -1033,7 +1028,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
           : comp
       )
     );
-    await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000));
     setComponents((prev) =>
       prev.map((comp) =>
         comp.type === "smartlightled" && (!comp.pin || comp.pin === pin) && comp.led === led
@@ -1065,7 +1060,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
       )
     );
   };
-    
+
   const activateULTRASONIC_SENSOR = (pin) => {
     console.log(`Activating ULTRASONIC_SENSOR on pin ${pin}`);
     setOutputLog((prev) => [...prev, `Ultrasonic Sensor on pin ${pin}: Activated`]);
@@ -1076,6 +1071,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     window.measureDistanceWrapper();
     checkConnection();
   };
+
   const startUltrasonicMode = (pin) => {
     console.log(`Calling startUltrasonicMode("${pin}")`);
     setOutputLog((prev) => [...prev, `Ultrasonic Sensor on pin ${pin}: Started continuous mode`]);
@@ -1306,6 +1302,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     window.measureDistanceWrapper();
     checkConnection();
   };
+
   const measureDistance = (components, setOutputLog) => {
     const sensor = components.find((comp) => comp.type === "sensor");
     const object = components.find((comp) => comp.type === "object");
@@ -1326,14 +1323,26 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
       ]);
     }
   };
+
+  // ---- Panel toggle handlers (mutually exclusive collapse) ----
   const toggleStoreMinimize = () => {
-    if (isStoreMinimized) {
-      setTabValue(previousTabValue); // Restore previous tab
-    } else {
-      setPreviousTabValue(tabValue);
-      setTabValue(null);
-    }
-    setIsStoreMinimized(!isStoreMinimized);
+    setIsStoreMinimized((prev) => !prev);
+  };
+
+  const toggleBlockly = () => {
+    setIsMinimizedBlockly((prev) => {
+      const next = !prev;
+      if (next) setIsMinimizedWorkspace(false); // never collapse both at once
+      return next;
+    });
+  };
+
+  const toggleWorkspace = () => {
+    setIsMinimizedWorkspace((prev) => {
+      const next = !prev;
+      if (next) setIsMinimizedBlockly(false); // never collapse both at once
+      return next;
+    });
   };
 
   const handleAddComponent = (id, name, type, image, defaultPin) => {
@@ -1357,9 +1366,6 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
         shapes: type === "oled" ? [] : null,
         xValue: type === "joystick" ? 0 : null,
         yValue: type === "joystick" ? 0 : null,
-        r: type === "led" ? 0 : null,
-        g: type === "led" ? 0 : null,
-        b: type === "led" ? 0 : null,
         r: type === "led" || type === "smartlight" ? 0 : null,
         g: type === "led" || type === "smartlight" ? 0 : null,
         b: type === "led" || type === "smartlight" ? 0 : null,
@@ -1584,18 +1590,18 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
       javascriptGenerator[comp.type] = function () {
         const pin = comp.defaultPin;
         let device = pinDeviceMap[normalizePin(pin)]?.device || comp.type.toUpperCase();
-      
+
         // Explicitly map 'sensor' type to 'ULTRASONIC_SENSOR'
         if (comp.type === "sensor") {
           device = "ULTRASONIC_SENSOR";
         }
-      
+
         // Declare a variable for the ultrasonic sensor reading
         const varName = `distance_${normalizePin(pin)}`;
         return `const ${varName} = activate${device}("${pin}");\n`;
       };
-      
     });
+
     Blockly.Blocks["smartlight_color_duration"] = {
       init: function () {
         this.appendDummyInput()
@@ -1693,7 +1699,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
           .appendField(
             new Blockly.FieldDropdown([
               ["0", "0"], ["1", "1"], ["2", "2"], ["3", "3"], ["4", "4"],
-              ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"]
+              ["5", "5"], ["6", "6"], ["7", "7"], ["8", "8"], ["9", "9"],
             ]),
             "NUMBER"
           );
@@ -1701,20 +1707,19 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
         this.setNextStatement(true, null);
         this.setColour(180);
         this.setTooltip("Displays a number (0-9) on the 7-segment display");
-      }
+      },
     };
-    
+
     javascriptGenerator["sevensegment_display"] = function (block) {
       const number = block.getFieldValue("NUMBER");
       const pin = "C03";
       return `displaySevenSegment(${number}, "${pin}");\n`;
     };
-    
+
     Blockly.Blocks["sevensegment_manual"] = {
       init: function () {
-        this.appendDummyInput()
-          .appendField("7-Segment Display")
-          
+        this.appendDummyInput().appendField("7-Segment Display");
+
         this.appendDummyInput()
           .appendField("Segment a:")
           .appendField(new Blockly.FieldDropdown([["ON", "TRUE"], ["OFF", "FALSE"]]), "SEG_A");
@@ -1742,7 +1747,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
         this.setTooltip("Control individual segments (a-g) of a 7-segment display with ON/OFF options");
       },
     };
-    
+
     javascriptGenerator["sevensegment_manual"] = function (block) {
       const pin = block.getFieldValue("PIN") || "C03";
       const segA = block.getFieldValue("SEG_A") === "TRUE";
@@ -1755,8 +1760,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
       const segments = { a: segA, b: segB, c: segC, d: segD, e: segE, f: segF, g: segG };
       return `controlSevenSegment(${JSON.stringify(segments)}, "${pin}");\n`;
     };
-   
-    
+
     Blockly.Blocks["sevensegment_letter"] = {
       init: function () {
         this.appendDummyInput()
@@ -1765,7 +1769,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
             new Blockly.FieldDropdown([
               ["A", "A"], ["B", "B"], ["C", "C"], ["D", "D"], ["E", "E"], ["F", "F"],
               ["H", "H"], ["J", "J"], ["K", "K"], ["L", "L"], ["N", "N"], ["P", "P"],
-              ["R", "R"], ["U", "U"]
+              ["R", "R"], ["U", "U"],
             ]),
             "LETTER"
           );
@@ -1773,15 +1777,15 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
         this.setNextStatement(true, null);
         this.setColour(180);
         this.setTooltip("Displays a letter (A-F, H, J, K, L, N, P, R, U) on the 7-segment display");
-      }
+      },
     };
-    
+
     javascriptGenerator["sevensegment_letter"] = function (block) {
       const letter = block.getFieldValue("LETTER");
       const pin = "C03";
       return `displaySevenSegmentLetter("${letter}", "${pin}");\n`;
     };
-    
+
     Blockly.Blocks["pantilt_control"] = {
       init: function () {
         this.appendValueInput("PAN")
@@ -1798,17 +1802,9 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     };
     javascriptGenerator["pantilt_control"] = function (block) {
       const pan =
-        javascriptGenerator.valueToCode(
-          block,
-          "PAN",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "PAN", javascriptGenerator.ORDER_ATOMIC) || "0";
       const tilt =
-        javascriptGenerator.valueToCode(
-          block,
-          "TILT",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "TILT", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C09";
       return `controlPanTilt(${pan}, ${tilt}, "${pin}");\n`;
     };
@@ -1826,11 +1822,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     };
     javascriptGenerator["servo_pan"] = function (block) {
       const degrees =
-        javascriptGenerator.valueToCode(
-          block,
-          "DEGREES",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "DEGREES", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C09";
       return `controlServoPan(${degrees}, "${pin}");\n`;
     };
@@ -1848,11 +1840,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     };
     javascriptGenerator["servo_tilt"] = function (block) {
       const degrees =
-        javascriptGenerator.valueToCode(
-          block,
-          "DEGREES",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "DEGREES", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C09";
       return `controlServoTilt(${degrees}, "${pin}");\n`;
     };
@@ -1870,11 +1858,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     };
     javascriptGenerator["servo_mode"] = function (block) {
       const degrees =
-        javascriptGenerator.valueToCode(
-          block,
-          "DEGREES",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "DEGREES", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C09";
       return `controlServoMode(${degrees}, "${pin}");\n`;
     };
@@ -1915,11 +1899,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     };
     javascriptGenerator["motor_control"] = function (block) {
       const speed =
-        javascriptGenerator.valueToCode(
-          block,
-          "SPEED",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "SPEED", javascriptGenerator.ORDER_ATOMIC) || "0";
       const direction = block.getFieldValue("DIRECTION") || "CLOCKWISE";
       const pin = "C06";
       return `controlMotor(${speed}, "${direction}", "${pin}");\n`;
@@ -1936,7 +1916,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
             ]),
             "DIR1"
           );
-                this.appendValueInput("SPEED1")
+        this.appendValueInput("SPEED1")
           .setCheck("Number")
           .appendField("Speed1:");
         this.appendDummyInput()
@@ -1960,18 +1940,10 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     javascriptGenerator["motor_driver"] = function (block) {
       const dir1 = block.getFieldValue("DIR1") || "CLOCKWISE";
       const speed1 =
-        javascriptGenerator.valueToCode(
-          block,
-          "SPEED1",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "SPEED1", javascriptGenerator.ORDER_ATOMIC) || "0";
       const dir2 = block.getFieldValue("DIR2") || "CLOCKWISE";
       const speed2 =
-        javascriptGenerator.valueToCode(
-          block,
-          "SPEED2",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "SPEED2", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C06";
       return `controlMotorDriver("${dir1}", "${dir2}", ${speed1}, ${speed2}, "${pin}");\n`;
     };
@@ -1992,17 +1964,9 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     };
     javascriptGenerator["buzzer_frequency"] = function (block) {
       const frequency =
-        javascriptGenerator.valueToCode(
-          block,
-          "FREQUENCY",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "440";
+        javascriptGenerator.valueToCode(block, "FREQUENCY", javascriptGenerator.ORDER_ATOMIC) || "440";
       const duration =
-        javascriptGenerator.valueToCode(
-          block,
-          "DURATION",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "1";
+        javascriptGenerator.valueToCode(block, "DURATION", javascriptGenerator.ORDER_ATOMIC) || "1";
       const pin = "C01";
       return `await playBuzzerFrequency(${frequency}, ${duration}, "${pin}");\n`;
     };
@@ -2014,7 +1978,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
           .appendField(
             new Blockly.FieldDropdown([
               ["Happy Birthday", "happy_birthday"],
-              ["Sare Gama Pa", "sare_gama_pa"]
+              ["Sare Gama Pa", "sare_gama_pa"],
             ]),
             "SONG"
           );
@@ -2027,7 +1991,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
     javascriptGenerator["buzzer_song_selector"] = function (block) {
       const song = block.getFieldValue("SONG"); // Get the selected song
       const pin = "C01"; // Fixed pin
-    
+
       // Return the appropriate function based on the selected song
       if (song === "happy_birthday") {
         return `await playBuzzerHappyBirthday("${pin}");\n`;
@@ -2035,10 +1999,7 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
         return `await playBuzzerSareGamaPa("${pin}");\n`;
       }
     };
-        
 
-    
-    
     Blockly.Blocks["led_manual_rgb"] = {
       init: function () {
         this.appendDummyInput()
@@ -2053,89 +2014,84 @@ javascriptGenerator["smartlightled_dropdown_colour_power"] = function (block) {
         this.setNextStatement(true, null);
         this.setColour(230);
         this.setTooltip("Set RGB LED intensity values for Red, Green, and Blue. Pin is fixed to C011.");
-      }
+      },
     };
-    
+
     javascriptGenerator["led_manual_rgb"] = function (block) {
       const red = block.getFieldValue("RED") || 0;
       const green = block.getFieldValue("GREEN") || 0;
       const blue = block.getFieldValue("BLUE") || 0;
       const pin = "C011"; // Fixed pin
-    
+
       return `setLedRGB(${red}, ${green}, ${blue}, "${pin}");\n`;
     };
-    
-        
-    
 
-   // BLOCK: Set predefined named color
-Blockly.Blocks["led_color"] = {
-  init: function () {
-    this.appendDummyInput()
-      .appendField("Set LED Color:")
-      .appendField(
-        new Blockly.FieldDropdown([
-          ["Red", "red"],
-          ["Green", "green"],
-          ["Blue", "blue"],
-          ["Yellow", "yellow"],
-          ["Cyan", "cyan"],
-          ["Magenta", "magenta"],
-          ["Orange", "orange"],
-          ["Purple", "purple"],
-          ["Pink", "pink"],
-          ["Brown", "brown"],
-          ["Black", "black"],
-          ["White", "white"],
-          ["Grey", "grey"],
-          ["Lime", "lime"],
-          ["Navy", "navy"],
-          ["Teal", "teal"],
-          ["Maroon", "maroon"],
-          ["Olive", "olive"],
-          ["SkyBlue", "skyblue"],
-          ["AliceBlue", "aliceblue"],
-          ["Gold", "gold"],
-          ["Indigo", "indigo"]
-        ]),
-        "COLOR"
-      );
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(180);
-    this.setTooltip("Sets the LED to a predefined color");
-  },
-};
+    // BLOCK: Set predefined named color
+    Blockly.Blocks["led_color"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Set LED Color:")
+          .appendField(
+            new Blockly.FieldDropdown([
+              ["Red", "red"],
+              ["Green", "green"],
+              ["Blue", "blue"],
+              ["Yellow", "yellow"],
+              ["Cyan", "cyan"],
+              ["Magenta", "magenta"],
+              ["Orange", "orange"],
+              ["Purple", "purple"],
+              ["Pink", "pink"],
+              ["Brown", "brown"],
+              ["Black", "black"],
+              ["White", "white"],
+              ["Grey", "grey"],
+              ["Lime", "lime"],
+              ["Navy", "navy"],
+              ["Teal", "teal"],
+              ["Maroon", "maroon"],
+              ["Olive", "olive"],
+              ["SkyBlue", "skyblue"],
+              ["AliceBlue", "aliceblue"],
+              ["Gold", "gold"],
+              ["Indigo", "indigo"],
+            ]),
+            "COLOR"
+          );
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Sets the LED to a predefined color");
+      },
+    };
 
-javascriptGenerator["led_color"] = function (block) {
-  const color = block.getFieldValue("COLOR");
-  const pin = "C011";
-  return `setLedColor("${color}", "${pin}");\n`;
-};
+    javascriptGenerator["led_color"] = function (block) {
+      const color = block.getFieldValue("COLOR");
+      const pin = "C011";
+      return `setLedColor("${color}", "${pin}");\n`;
+    };
 
-// BLOCK: Set RGB LED with intensity using hex picker
-Blockly.Blocks["led_rgb_intensity"] = {
-  init: function () {
-    this.appendDummyInput()
-      .appendField("Set RGB LED Color:")
-      .appendField(new Blockly.FieldColour("#ff0000"), "COLOR");
-    this.setPreviousStatement(true, null);
-    this.setNextStatement(true, null);
-    this.setColour(180);
-    this.setTooltip("Pick a color to set the RGB LED.");
-  },
-};
+    // BLOCK: Set RGB LED with intensity using hex picker
+    Blockly.Blocks["led_rgb_intensity"] = {
+      init: function () {
+        this.appendDummyInput()
+          .appendField("Set RGB LED Color:")
+          .appendField(new Blockly.FieldColour("#ff0000"), "COLOR");
+        this.setPreviousStatement(true, null);
+        this.setNextStatement(true, null);
+        this.setColour(180);
+        this.setTooltip("Pick a color to set the RGB LED.");
+      },
+    };
 
-javascriptGenerator["led_rgb_intensity"] = function (block) {
-  const color = block.getFieldValue("COLOR"); // e.g., "#ff0000"
-  const red = parseInt(color.substring(1, 3), 16);
-  const green = parseInt(color.substring(3, 5), 16);
-  const blue = parseInt(color.substring(5, 7), 16);
-  const pin = "C011";
-  return `setLedRGB(${red}, ${green}, ${blue}, "${pin}");\n`;
-};
-
-
+    javascriptGenerator["led_rgb_intensity"] = function (block) {
+      const color = block.getFieldValue("COLOR"); // e.g., "#ff0000"
+      const red = parseInt(color.substring(1, 3), 16);
+      const green = parseInt(color.substring(3, 5), 16);
+      const blue = parseInt(color.substring(5, 7), 16);
+      const pin = "C011";
+      return `setLedRGB(${red}, ${green}, ${blue}, "${pin}");\n`;
+    };
 
     Blockly.Blocks["oled_display"] = {
       init: function () {
@@ -2150,11 +2106,7 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["oled_display"] = function (block) {
       const text =
-        javascriptGenerator.valueToCode(
-          block,
-          "TEXT",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || '""';
+        javascriptGenerator.valueToCode(block, "TEXT", javascriptGenerator.ORDER_ATOMIC) || '""';
       const pin = "C01";
       return `displayOLED(${text}, "${pin}");\n`;
     };
@@ -2192,23 +2144,11 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["oled_circle"] = function (block) {
       const x =
-        javascriptGenerator.valueToCode(
-          block,
-          "X",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "X", javascriptGenerator.ORDER_ATOMIC) || "0";
       const y =
-        javascriptGenerator.valueToCode(
-          block,
-          "Y",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "Y", javascriptGenerator.ORDER_ATOMIC) || "0";
       const radius =
-        javascriptGenerator.valueToCode(
-          block,
-          "RADIUS",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "10";
+        javascriptGenerator.valueToCode(block, "RADIUS", javascriptGenerator.ORDER_ATOMIC) || "10";
       const pin = "C01";
       return `drawOLEDCircle(${x}, ${y}, ${radius}, "${pin}");\n`;
     };
@@ -2235,29 +2175,13 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["oled_panel"] = function (block) {
       const x1 =
-        javascriptGenerator.valueToCode(
-          block,
-          "X1",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "X1", javascriptGenerator.ORDER_ATOMIC) || "0";
       const y1 =
-        javascriptGenerator.valueToCode(
-          block,
-          "Y1",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "Y1", javascriptGenerator.ORDER_ATOMIC) || "0";
       const x2 =
-        javascriptGenerator.valueToCode(
-          block,
-          "X2",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "10";
+        javascriptGenerator.valueToCode(block, "X2", javascriptGenerator.ORDER_ATOMIC) || "10";
       const y2 =
-        javascriptGenerator.valueToCode(
-          block,
-          "Y2",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "10";
+        javascriptGenerator.valueToCode(block, "Y2", javascriptGenerator.ORDER_ATOMIC) || "10";
       const pin = "C01";
       return `drawOLEDPanel(${x1}, ${y1}, ${x2}, ${y2}, "${pin}");\n`;
     };
@@ -2278,17 +2202,9 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["oled_pixel"] = function (block) {
       const x =
-        javascriptGenerator.valueToCode(
-          block,
-          "X",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "X", javascriptGenerator.ORDER_ATOMIC) || "0";
       const y =
-        javascriptGenerator.valueToCode(
-          block,
-          "Y",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "Y", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C01";
       return `drawOLEDPixel(${x}, ${y}, "${pin}");\n`;
     };
@@ -2318,35 +2234,15 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["oled_rectangle"] = function (block) {
       const x =
-        javascriptGenerator.valueToCode(
-          block,
-          "X",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "X", javascriptGenerator.ORDER_ATOMIC) || "0";
       const y =
-        javascriptGenerator.valueToCode(
-          block,
-          "Y",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "Y", javascriptGenerator.ORDER_ATOMIC) || "0";
       const length =
-        javascriptGenerator.valueToCode(
-          block,
-          "LENGTH",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "10";
+        javascriptGenerator.valueToCode(block, "LENGTH", javascriptGenerator.ORDER_ATOMIC) || "10";
       const breadth =
-        javascriptGenerator.valueToCode(
-          block,
-          "BREADTH",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "10";
+        javascriptGenerator.valueToCode(block, "BREADTH", javascriptGenerator.ORDER_ATOMIC) || "10";
       const radius =
-        javascriptGenerator.valueToCode(
-          block,
-          "RADIUS",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "0";
+        javascriptGenerator.valueToCode(block, "RADIUS", javascriptGenerator.ORDER_ATOMIC) || "0";
       const pin = "C01";
       return `drawOLEDRectangle(${x}, ${y}, ${length}, ${breadth}, ${radius}, "${pin}");\n`;
     };
@@ -2378,11 +2274,7 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["delay"] = function (block) {
       const delayTime =
-        javascriptGenerator.valueToCode(
-          block,
-          "DELAY_TIME",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || "1";
+        javascriptGenerator.valueToCode(block, "DELAY_TIME", javascriptGenerator.ORDER_ATOMIC) || "1";
       return `await new Promise(resolve => setTimeout(resolve, ${delayTime} * 1000));\n`;
     };
 
@@ -2399,14 +2291,9 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     };
     javascriptGenerator["alert"] = function (block) {
       const message =
-        javascriptGenerator.valueToCode(
-          block,
-          "MESSAGE",
-          javascriptGenerator.ORDER_ATOMIC
-        ) || '""';
+        javascriptGenerator.valueToCode(block, "MESSAGE", javascriptGenerator.ORDER_ATOMIC) || '""';
       return `alert("Total distance is " + ${message});\n`;
     };
-    
 
     Blockly.Blocks["json_object"] = {
       init: function () {
@@ -2418,8 +2305,7 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
       },
     };
     javascriptGenerator["json_object"] = function (block) {
-      const statements =
-        javascriptGenerator.statementToCode(block, "KEY_VALUE_PAIRS");
+      const statements = javascriptGenerator.statementToCode(block, "KEY_VALUE_PAIRS");
       return [`{${statements}}`, javascriptGenerator.ORDER_ATOMIC];
     };
 
@@ -2491,9 +2377,7 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
           kind: "category",
           name: "JSON",
           colour: "#A6745C",
-          contents: [
-            { kind: "block", type: "json_object" },
-          ],
+          contents: [{ kind: "block", type: "json_object" }],
         },
         {
           kind: "category",
@@ -2514,14 +2398,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
             { kind: "block", type: "sevensegment_display" },
             { kind: "block", type: "sevensegment_letter" },
             { kind: "block", type: "sevensegment_manual" },
-            
-            // { kind: "block", type: "oled" },
-            // { kind: "block", type: "oled_display" },
-            // { kind: "block", type: "oled_reset" },
-            // { kind: "block", type: "oled_circle" },
-            // { kind: "block", type: "oled_panel" },
-            // { kind: "block", type: "oled_pixel" },
-            // { kind: "block", type: "oled_rectangle" },
           ],
         },
         {
@@ -2529,11 +2405,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
           name: "OLED Display",
           colour: "#0288d1",
           contents: [
-            // { kind: "block", type: "sevensegment" },
-            // { kind: "block", type: "sevensegment_display" },
-            // { kind: "block", type: "sevensegment_letter" },
-            // { kind: "block", type: "sevensegment_manual" },
-            
             { kind: "block", type: "oled" },
             { kind: "block", type: "oled_display" },
             { kind: "block", type: "oled_reset" },
@@ -2551,12 +2422,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
             { kind: "block", type: "motor" },
             { kind: "block", type: "motor_control" },
             { kind: "block", type: "motor_driver" },
-            // { kind: "block", type: "pantilt" },
-            // { kind: "block", type: "pantilt_control" },
-            // { kind: "block", type: "servo_pan" },
-            // { kind: "block", type: "servo_tilt" },
-            // { kind: "block", type: "servo_mode" },
-            // { kind: "block", type: "servo_lookup" },
           ],
         },
         {
@@ -2564,9 +2429,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
           name: "Pan and Tilt",
           colour: "#5CA699",
           contents: [
-            // { kind: "block", type: "motor" },
-            // { kind: "block", type: "motor_control" },
-            // { kind: "block", type: "motor_driver" },
             { kind: "block", type: "pantilt" },
             { kind: "block", type: "pantilt_control" },
             { kind: "block", type: "servo_pan" },
@@ -2585,15 +2447,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
             { kind: "block", type: "buzzer_song_selector" },
           ],
         },
-        // {
-        //   kind: "category",
-        //   name: "Sensor",
-        //   colour: "#5C81A6",
-        //   contents: [
-        //     { kind: "block", type: "sensor" },
-        //     { kind: "block", type: "ultrasonic_mode" },
-        //   ],
-        // },
         {
           kind: "category",
           name: "Tri colour LED",
@@ -2603,12 +2456,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
             { kind: "block", type: "led_rgb_intensity" },
             { kind: "block", type: "led_color" },
             { kind: "block", type: "led_manual_rgb" },
-            
-            // { kind: "block", type: "smartlight_vibgyor" },
-            // { kind: "block", type: "smartlightled_colour_seconds" },
-            // { kind: "block", type: "smartlightled_colour_power" },
-            // { kind: "block", type: "smartlightled_dropdown_colour_power" },
-           
           ],
         },
         {
@@ -2616,16 +2463,10 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
           name: "Smart Light led",
           colour: "#A6915C",
           contents: [
-            // { kind: "block", type: "led" },
-            // { kind: "block", type: "led_rgb_intensity" },
-            // { kind: "block", type: "led_color" },
-            // { kind: "block", type: "led_manual_rgb" },
-            
             { kind: "block", type: "smartlight_vibgyor" },
             { kind: "block", type: "smartlightled_colour_seconds" },
             { kind: "block", type: "smartlightled_colour_power" },
             { kind: "block", type: "smartlightled_dropdown_colour_power" },
-           
           ],
         },
         {
@@ -2658,11 +2499,47 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
       setGeneratedCode(code);
     });
 
+    // Make sure Blockly fits its container once after injection.
+    const initialResize = window.setTimeout(() => {
+      if (workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+    }, 0);
+
     return () => {
+      window.clearTimeout(initialResize);
       if (workspaceRef.current) {
         workspaceRef.current.dispose();
+        workspaceRef.current = null;
       }
     };
+  }, []);
+
+  // --- FIX 1: Resize Blockly whenever a panel collapses/expands ---
+  // CSS width/flex transition is 0.3s, so wait a touch longer before resizing.
+  useEffect(() => {
+    if (!workspaceRef.current) return;
+    const id = window.setTimeout(() => {
+      Blockly.svgResize(workspaceRef.current);
+    }, 350);
+    return () => window.clearTimeout(id);
+  }, [isMinimizedBlockly, isMinimizedWorkspace, isStoreMinimized, tabValue]);
+
+  // --- FIX 2: Resize Blockly on window resize ---
+  useEffect(() => {
+    const handleResize = () => {
+      if (workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // --- FIX 3: Auto-resize Blockly whenever its container box changes size ---
+  useEffect(() => {
+    if (!blocklyDiv.current || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (workspaceRef.current) Blockly.svgResize(workspaceRef.current);
+    });
+    ro.observe(blocklyDiv.current);
+    return () => ro.disconnect();
   }, []);
 
   const runCode = async () => {
@@ -2719,81 +2596,6 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
     }
   };
 
-  const testSevenSegment = () => {
-    displaySevenSegment(4, "C03");
-  };
-
-  const testSevenSegmentLetter = () => {
-    displaySevenSegmentLetter("A", "C03");
-  };
-
-  const testOLED = () => {
-    displayOLED("Test", "C01");
-  };
-
-  const testOLEDCircle = () => {
-    drawOLEDCircle(64, 32, 20, "C01");
-  };
-
-  const testOLEDPanel = () => {
-    drawOLEDPanel(10, 10, 100, 50, "C01");
-  };
-
-  const testOLEDPixel = () => {
-    drawOLEDPixel(64, 32, "C01");
-  };
-
-  const testOLEDRectangle = () => {
-    drawOLEDRectangle(20, 20, 80, 40, 5, "C01");
-  };
-
-  const testPanTilt = () => {
-    controlPanTilt(90, 45, "C09");
-  };
-
-  const testServoPan = () => {
-    controlServoPan(90, "C09");
-  };
-
-  const testServoTilt = () => {
-    controlServoTilt(45, "C09");
-  };
-
-  const testLED = () => {
-    setLedRGB(255, 0, 0, "C011");
-  };
-
-  const testLEDColor = () => {
-    setLedColor("aliceblue", "C011");
-  };
-
-  const testMotor = () => {
-    controlMotor(255, "FORWARD", "C06");
-  };
-
-  const testMotorDriver = () => {
-    controlMotorDriver("FORWARD", "BACKWARD", 200, 200, "C06");
-  };
-
-  const testBuzzer = () => {
-    playBuzzerFrequency(440, 1, "C01");
-  };
-
-  const testBuzzerHappyBirthday = () => {
-    playBuzzerHappyBirthday("C01");
-  };
-
-  const testJoystick = () => {
-    activateJOYSTICK("C10");
-  };
-
-  const testUltrasonic = () => {
-    startUltrasonicMode("C12");
-  };
-
-
-  console.log('Theme:', theme); // Debug theme
-
   return (
     <ErrorBoundary>
       <ThemeProvider theme={theme}>
@@ -2801,15 +2603,15 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
         <DndProvider backend={HTML5Backend}>
           <Box
             sx={{
-              minHeight: '100vh',
-              background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+              minHeight: "100vh",
+              background: "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
             }}
           >
             <AppBar
               position="static"
               sx={{
-                background: 'linear-gradient(to right, #0288d1, #4fc3f7)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                background: "linear-gradient(to right, #0288d1, #4fc3f7)",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
               }}
             >
               <Toolbar>
@@ -2824,8 +2626,8 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
                   onClick={runCode}
                   startIcon={<PlayArrowIcon />}
                   sx={{
-                    bgcolor: 'rgba(255,255,255,0.15)',
-                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                    bgcolor: "rgba(255,255,255,0.15)",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.25)" },
                     px: 2,
                   }}
                 >
@@ -2834,97 +2636,158 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
               </Toolbar>
             </AppBar>
 
-            <Container maxWidth="xxl" sx={{ mt: 4, mb: 4 }}>
-              <Box sx={{ display: 'flex', gap: 3, height: '80vh' }}>
+            <Container maxWidth={false} sx={{ mt: 4, mb: 4, px: { xs: 2, md: 4 } }}>
+              <Box sx={{ display: "flex", gap: 3, height: "80vh" }}>
+                {/* ---------- Blockly panel ---------- */}
                 <Box
                   sx={{
-                    width: isMinimizedBlockly ? '10%' : isMinimizedWorkspace ? '90%' : '50%',
-                    bgcolor: '#fff',
-                    borderRadius: 12,
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                    width: isMinimizedBlockly
+                      ? "56px"
+                      : isMinimizedWorkspace
+                      ? "90%"
+                      : "50%",
+                    minWidth: 0,
+                    bgcolor: "#fff",
+                    borderRadius: 3,
+                    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                     p: isMinimizedBlockly ? 1 : 3,
-                    overflow: 'hidden',
-                    transition: 'width 0.3s ease-in-out',
-                    display: 'flex',
-                    flexDirection: 'column',
+                    overflow: "hidden",
+                    transition: "width 0.3s ease-in-out",
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMinimizedBlockly ? 0 : 2 }}>
-                    <Typography variant="h6" sx={{ color: theme.palette.primary?.main || '#0288d1', fontWeight: 600 }}>
-                      Blockly Editor
-                    </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: isMinimizedBlockly ? "center" : "space-between",
+                      alignItems: "center",
+                      mb: isMinimizedBlockly ? 0 : 2,
+                    }}
+                  >
+                    {!isMinimizedBlockly && (
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: theme.palette.primary?.main || "#0288d1",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Blockly Editor
+                      </Typography>
+                    )}
                     <IconButton
-                      onClick={() => setIsMinimizedBlockly(!isMinimizedBlockly)}
-                      sx={{ color: theme.palette.primary?.main || '#0288d1' }}
+                      onClick={toggleBlockly}
+                      sx={{ color: theme.palette.primary?.main || "#0288d1" }}
+                      title={isMinimizedBlockly ? "Expand Blockly" : "Collapse Blockly"}
                     >
                       {isMinimizedBlockly ? <ExpandMoreIcon /> : <ExpandLessIcon />}
                     </IconButton>
                   </Box>
-                  {!isMinimizedBlockly && (
-                    <div
-                      ref={blocklyDiv}
-                      style={{
-                        flex: 1,
-                        width: '200%',
-                        borderRadius: 8,
-                        overflow: 'hidden',
-                        backgroundColor: '#f9fafb',
-                      }}
-                    />
-                  )}
+
+                  {/* Keep the Blockly div ALWAYS mounted — just hide it. */}
+                  {/* Unmounting it destroys the injected workspace and it comes back blank. */}
+                  <div
+                    ref={blocklyDiv}
+                    style={{
+                      flex: 1,
+                      width: "100%",
+                      minHeight: 0,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      backgroundColor: "#f9fafb",
+                      display: isMinimizedBlockly ? "none" : "block",
+                    }}
+                  />
                 </Box>
 
-                <Box sx={{ width: isMinimizedWorkspace ? '10%' : isMinimizedBlockly ? '90%' : '50%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* ---------- Right column (store + workspace) ---------- */}
+                <Box
+                  sx={{
+                    width: isMinimizedWorkspace
+                      ? "56px"
+                      : isMinimizedBlockly
+                      ? "90%"
+                      : "50%",
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 3,
+                    transition: "width 0.3s ease-in-out",
+                  }}
+                >
+                  {/* Component Store */}
                   <Box
                     sx={{
-                      bgcolor: '#fff',
-                      borderRadius: 12,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
-                      p: isStoreMinimized ? 1 : tabValue === null ? 2 : 3,
-                      flex: isStoreMinimized ? '0 0 48px' : tabValue === null ? '0 0 80px' : '0 0 40%',
-                      overflowY: 'auto',
-                      transition: 'all 0.3s ease-in-out',
+                      bgcolor: "#fff",
+                      borderRadius: 3,
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                      p: isStoreMinimized ? 1 : 3,
+                      flex: isStoreMinimized ? "0 0 56px" : "0 0 40%",
+                      minHeight: 0,
+                      overflowY: "auto",
+                      transition: "all 0.3s ease-in-out",
                     }}
                   >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isStoreMinimized ? 0 : 0.5 }}>
-                      
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mb: isStoreMinimized ? 0 : 0.5,
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          color: theme.palette.primary?.main || "#0288d1",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Component Store
+                      </Typography>
                       <IconButton
                         onClick={toggleStoreMinimize}
                         sx={{
-                          color: theme.palette.primary?.main || '#0288d1',
-                          bgcolor: isStoreMinimized ? 'rgba(2,136,209,0.05)' : 'transparent',
+                          color: theme.palette.primary?.main || "#0288d1",
+                          bgcolor: isStoreMinimized ? "rgba(2,136,209,0.05)" : "transparent",
                         }}
+                        title={isStoreMinimized ? "Expand store" : "Collapse store"}
                       >
                         {isStoreMinimized ? <ExpandMoreIcon /> : <ExpandLessIcon />}
                       </IconButton>
                     </Box>
+
                     {!isStoreMinimized && (
                       <>
                         <Tabs
                           value={tabValue}
                           onChange={handleTabChange}
-                          
-                         
-                          sx={{ mb: tabValue === null ? 0 : 2 }}
+                          variant="scrollable"
+                          scrollButtons="auto"
+                          allowScrollButtonsMobile
+                          sx={{ mb: 2 }}
                         >
                           <Tab label="Bridge" />
                           <Tab label="LEDs" />
                           <Tab label="Display" />
-                          {/* <Tab label="Sensors" /> */}
                           <Tab label="Sound" />
                           <Tab label="Motor Driver" />
                           <Tab label="Joystick" />
                           <Tab label="Other" />
                         </Tabs>
-                        {tabValue !== null && (
-                          <Box sx={{ p: 2 }}>
-                            <Grid container spacing={2}>
-                              {Object.keys(categories).map((category, index) => (
+
+                        <Box sx={{ p: 2 }}>
+                          <Grid container spacing={2}>
+                            {Object.keys(categories).map(
+                              (category, index) =>
                                 tabValue === index &&
                                 componentsList
                                   .filter((comp) => categories[category].includes(comp.type))
                                   .map((comp) => (
-                                    <Grid item xs={4} key={comp.id}>
+                                    <Grid item xs={6} sm={4} key={comp.id}>
                                       <DraggableComponent
                                         id={comp.id}
                                         name={comp.name}
@@ -2937,46 +2800,66 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
                                       />
                                     </Grid>
                                   ))
-                              ))}
-                            </Grid>
-                          </Box>
-                        )}
+                            )}
+                          </Grid>
+                        </Box>
                       </>
                     )}
                   </Box>
 
+                  {/* Workspace */}
                   <Box
                     sx={{
-                      bgcolor: '#fff',
-                      borderRadius: 12,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                      bgcolor: "#fff",
+                      borderRadius: 3,
+                      boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                       p: isMinimizedWorkspace ? 1 : 3,
                       flex: 1,
-                      transition: 'all 0.3s ease-in-out',
-                      display: 'flex',
-                      flexDirection: 'column',
+                      minHeight: 0,
+                      transition: "all 0.3s ease-in-out",
+                      display: "flex",
+                      flexDirection: "column",
                     }}
                   >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMinimizedWorkspace ? 0 : 2 }}>
-                      <Typography variant="h6" sx={{ color: theme.palette.primary?.main || '#0288d1', fontWeight: 600 }}>
-                        Workspace
-                      </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: isMinimizedWorkspace ? "center" : "space-between",
+                        alignItems: "center",
+                        mb: isMinimizedWorkspace ? 0 : 2,
+                      }}
+                    >
+                      {!isMinimizedWorkspace && (
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            color: theme.palette.primary?.main || "#0288d1",
+                            fontWeight: 600,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          Workspace
+                        </Typography>
+                      )}
                       <IconButton
-                        onClick={() => setIsMinimizedWorkspace(!isMinimizedWorkspace)}
-                        sx={{ color: theme.palette.primary?.main || '#0288d1' }}
+                        onClick={toggleWorkspace}
+                        sx={{ color: theme.palette.primary?.main || "#0288d1" }}
+                        title={isMinimizedWorkspace ? "Expand workspace" : "Collapse workspace"}
                       >
                         {isMinimizedWorkspace ? <ExpandMoreIcon /> : <ExpandLessIcon />}
                       </IconButton>
                     </Box>
+
                     {!isMinimizedWorkspace && (
-                      <Workspace
-                        components={components}
-                        setComponents={setComponents}
-                        wires={wires}
-                        setWires={setWires}
-                        addWire={addWire}
-                        sx={{ flex: 1 }}
-                      />
+                      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+                        <Workspace
+                          components={components}
+                          setComponents={setComponents}
+                          wires={wires}
+                          setWires={setWires}
+                          addWire={addWire}
+                        />
+                      </Box>
                     )}
                   </Box>
                 </Box>
@@ -2985,9 +2868,9 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
               <Dialog
                 open={openSessionsDialog}
                 onClose={() => setOpenSessionsDialog(false)}
-                PaperProps={{ sx: { borderRadius: 12 } }}
+                PaperProps={{ sx: { borderRadius: 3 } }}
               >
-                <DialogTitle sx={{ fontWeight: 600, color: theme.palette.primary?.main || '#0288d1' }}>
+                <DialogTitle sx={{ fontWeight: 600, color: theme.palette.primary?.main || "#0288d1" }}>
                   Load Session
                 </DialogTitle>
                 <DialogContent>
@@ -2998,8 +2881,8 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
                         key={session.id}
                         onClick={() => loadSession(session.id)}
                         sx={{
-                          borderRadius: 8,
-                          '&:hover': { bgcolor: 'rgba(2,136,209,0.05)' },
+                          borderRadius: 2,
+                          "&:hover": { bgcolor: "rgba(2,136,209,0.05)" },
                         }}
                       >
                         <ListItemText primary={session.name} />
@@ -3017,7 +2900,7 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
                 <Alert
                   severity="success"
                   onClose={() => setSnackbarOpen(false)}
-                  sx={{ borderRadius: 8, bgcolor: '#e3f2fd', color: '#0288d1' }}
+                  sx={{ borderRadius: 2, bgcolor: "#e3f2fd", color: "#0288d1" }}
                 >
                   Action completed successfully!
                 </Alert>
@@ -3026,18 +2909,21 @@ javascriptGenerator["led_rgb_intensity"] = function (block) {
               <Box
                 sx={{
                   mt: 4,
-                  bgcolor: '#fff',
-                  borderRadius: 12,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                  bgcolor: "#fff",
+                  borderRadius: 3,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
                   p: 3,
                 }}
               >
-                <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary?.main || '#0288d1', fontWeight: 600 }}>
+                <Typography
+                  variant="h6"
+                  sx={{ mb: 2, color: theme.palette.primary?.main || "#0288d1", fontWeight: 600 }}
+                >
                   Output Log
                 </Typography>
-                <Box sx={{ maxHeight: 200, overflowY: 'auto', bgcolor: '#f9fafb', p: 2, borderRadius: 8 }}>
+                <Box sx={{ maxHeight: 200, overflowY: "auto", bgcolor: "#f9fafb", p: 2, borderRadius: 2 }}>
                   {outputLog.map((log, index) => (
-                    <Typography key={index} variant="body2" sx={{ mb: 1, color: '#374151' }}>
+                    <Typography key={index} variant="body2" sx={{ mb: 1, color: "#374151" }}>
                       {log}
                     </Typography>
                   ))}
